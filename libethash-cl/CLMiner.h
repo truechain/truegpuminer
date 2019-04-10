@@ -10,6 +10,7 @@
 #include <libdevcore/Worker.h>
 #include <libethcore/EthashAux.h>
 #include <libethcore/Miner.h>
+#include <libminerva/hash.h>
 
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/lexical_cast.hpp>
@@ -59,6 +60,9 @@ protected:
 private:
     
     void workLoop() override;
+
+    // Dataset generated from table with fixed length
+    uint64_t m_dataset[DATASET_SIZE];
 
     vector<cl::Context> m_context;
     vector<cl::CommandQueue> m_queue;

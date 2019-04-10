@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include <ethash/ethash.hpp>
+#include <boost/multiprecision/cpp_int.hpp>
 
 using namespace std;
 using namespace dev;
@@ -25,7 +26,7 @@ EthGetworkClient::EthGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
     Json::Value jGetWork;
     jGetWork["id"] = unsigned(1);
     jGetWork["jsonrpc"] = "2.0";
-    jGetWork["method"] = "eth_getWork";
+    jGetWork["method"] = "etrue_getWork";
     jGetWork["params"] = Json::Value(Json::arrayValue);
     m_jsonGetWork = std::string(Json::writeString(m_jSwBuilder, jGetWork));
 }
@@ -418,10 +419,35 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
             {
                 Json::Value JPrm = JRes.get("result", Json::Value::null);
                 WorkPackage newWp;
-                
+
                 newWp.header = h256(JPrm.get(Json::Value::ArrayIndex(0), "").asString());
                 newWp.seed = h256(JPrm.get(Json::Value::ArrayIndex(1), "").asString());
-                newWp.boundary = h256(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
+//              newWp.fruitBoundary = h256(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
+//              newWp.boundary = h256(JPrm.get(Json::Value::ArrayIndex(3), "").asString());
+                using namespace boost::multiprecision;
+                using BigInteger = boost::multiprecision::cpp_int;
+                {
+                    // GetWork return fruit and block difficulty
+                    BigInteger max = BigInteger("0xffffffffffffffffffffffffffffffff");
+                    BigInteger fruit = BigInteger(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
+                    fruit = max / fruit;
+                    stringstream ss;
+                    ss << "0x" << setw(64) << setfill('0') << std::hex << fruit;
+                    string target = ss.str();
+                    boost::algorithm::to_lower(target);
+                    newWp.fruitBoundary = h256(target);
+                }
+                {
+                    // GetWork return fruit and block difficulty
+                    BigInteger max = BigInteger("0xffffffffffffffffffffffffffffffff");
+                    BigInteger block = BigInteger(JPrm.get(Json::Value::ArrayIndex(3), "").asString());
+                    block = max / block;
+                    stringstream ss;
+                    ss << "0x" << setw(64) << setfill('0') << std::hex << block;
+                    string target = ss.str();
+                    boost::algorithm::to_lower(target);
+                    newWp.boundary = h256(target);
+                }
                 newWp.job = newWp.header.hex();
                 if (m_current.header != newWp.header)
                 {

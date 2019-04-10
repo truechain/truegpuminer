@@ -7,6 +7,7 @@
 
 #include <libethcore/Farm.h>
 #include <ethash/ethash.hpp>
+#include <libminerva/hash.h>
 
 #include "CLMiner.h"
 #include "ethash.h"
@@ -314,6 +315,7 @@ void CLMiner::workLoop()
                 m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE,
                     offsetof(SearchResults, count),
                     (m_settings.noExit ? 1 : 2) * sizeof(results.count), (void*)&results.count);
+#if 0
                 if (results.count)
                 {
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
@@ -327,6 +329,7 @@ void CLMiner::workLoop()
                 if (!m_settings.noExit)
                     m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
                         offsetof(SearchResults, count), sizeof(zerox3), zerox3);
+#endif
             }
             else
                 results.count = 0;
@@ -344,16 +347,21 @@ void CLMiner::workLoop()
 
             if (current.header != w.header)
             {
-
-                if (current.epoch != w.epoch)
-                {
-                    m_abortqueue.clear();
+                cllog << "set work package";
+//              if (current.epoch != w.epoch)
+//              {
+//                  m_abortqueue.clear();
+                    cllog << "init epoch";
 
                     if (!initEpoch())
                         break;  // This will simply exit the thread
 
-                    m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
-                }
+//                  m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
+//              }
+
+                // Set dataset constant buffer.
+                m_queue[0].enqueueWriteBuffer(
+                    m_dag[0], CL_FALSE, 0, sizeof(m_dataset), m_dataset);
 
                 // Upper 64 bits of the boundary.
                 const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -372,8 +380,9 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
                 m_searchKernel.setArg(1, m_header[0]);        // Supply header buffer to kernel.
                 m_searchKernel.setArg(2, m_dag[0]);           // Supply DAG buffer to kernel.
-                m_searchKernel.setArg(3, m_dagItems);
-                m_searchKernel.setArg(5, target);
+                m_searchKernel.setArg(3, target);
+
+                cllog << "run kernel startnonce: " << startNonce;
 
 #ifdef DEV_BUILD
                 if (g_logOptions & LOG_SWITCH)
@@ -385,11 +394,13 @@ void CLMiner::workLoop()
 #endif
             }
 
+
             // Run the kernel.
             m_searchKernel.setArg(4, startNonce);
             m_queue[0].enqueueNDRangeKernel(
                 m_searchKernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
 
+#if 0
             if (results.count)
             {
                 // Report results while the kernel is running.
@@ -410,6 +421,7 @@ void CLMiner::workLoop()
                 }
             }
 
+#endif
             current = w;  // kernel now processing newest work
             current.startNonce = startNonce;
             // Increase start nonce for following kernel execution.
@@ -456,7 +468,7 @@ void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection
         ClPlatformTypeEnum platformType = ClPlatformTypeEnum::Unknown;
         if (platformName == "AMD Accelerated Parallel Processing")
             platformType = ClPlatformTypeEnum::Amd;
-        else if (platformName == "Clover" || platformName == "Intel Gen OCL Driver")
+        else if (platformName == "Clover" || platformName == "Intel Gen OCL Driver" || platformName == "Apple")
             platformType = ClPlatformTypeEnum::Clover;
         else if (platformName == "NVIDIA CUDA")
             platformType = ClPlatformTypeEnum::Nvidia;
@@ -677,13 +689,16 @@ bool CLMiner::initDevice()
 
 bool CLMiner::initEpoch_internal()
 {
+#if 0
     auto startInit = std::chrono::steady_clock::now();
     size_t RequiredMemory = (m_epochContext.dagSize + m_epochContext.lightSize);
+#endif
 
     // Release the pause flag if any
     resume(MinerPauseEnum::PauseDueToInsufficientMemory);
     resume(MinerPauseEnum::PauseDueToInitEpochError);
 
+#if 0
     // Check whether the current device has sufficient memory every time we recreate the dag
     if (m_deviceDescriptor.totalMemory < RequiredMemory)
     {
@@ -697,6 +712,7 @@ bool CLMiner::initEpoch_internal()
     }
 
     cllog << "Generating DAG + Light : " << dev::getFormattedMemory((double)RequiredMemory);
+#endif
 
     try
     {
@@ -720,6 +736,7 @@ bool CLMiner::initEpoch_internal()
         m_context.push_back(cl::Context(vector<cl::Device>(&m_device, &m_device + 1)));
         m_queue.clear();
         m_queue.push_back(cl::CommandQueue(m_context[0], m_device));
+        cllog << "create cl context";
 
 
         m_dagItems = m_epochContext.dagNumItems;
@@ -731,7 +748,6 @@ bool CLMiner::initEpoch_internal()
         // TODO: Just use C++ raw string literal.
         string code;
 
-        cllog << "OpenCL kernel";
         code = string(ethash_cl, ethash_cl + sizeof(ethash_cl));
 
         addDefinition(code, "WORKSIZE", m_settings.localWorkSize);
@@ -770,6 +786,7 @@ bool CLMiner::initEpoch_internal()
 
         if (!m_settings.noBinary)
         {
+            cllog << "Use kernel binary";
             std::ifstream kernel_file;
             vector<unsigned char> bin_data;
             std::stringstream fname_strm;
@@ -827,6 +844,7 @@ bool CLMiner::initEpoch_internal()
         // create buffer for dag
         try
         {
+#if 0
             cllog << "Creating light cache buffer, size: "
                   << dev::getFormattedMemory((double)m_epochContext.lightSize);
             m_light.clear();
@@ -836,9 +854,10 @@ bool CLMiner::initEpoch_internal()
                   << ", free: "
                   << dev::getFormattedMemory(
                          (double)(m_deviceDescriptor.totalMemory - RequiredMemory));
+#endif
             m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_epochContext.dagSize));
-            cllog << "Loading kernels";
+            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, sizeof(m_dataset)));
+            cllog << "Loading kernels, " << "binary " << loadedBinary;
 
             // If we have a binary kernel to use, let's try it
             // otherwise just do a normal opencl load
@@ -847,11 +866,13 @@ bool CLMiner::initEpoch_internal()
             else
                 m_searchKernel = cl::Kernel(program, "search");
 
+#if 0
             m_dagKernel = cl::Kernel(program, "GenerateDAG");
 
             cllog << "Writing light cache buffer";
             m_queue[0].enqueueWriteBuffer(
                 m_light[0], CL_TRUE, 0, m_epochContext.lightSize, m_epochContext.lightCache);
+#endif
         }
         catch (cl::Error const& err)
         {
@@ -864,15 +885,18 @@ bool CLMiner::initEpoch_internal()
         m_header.clear();
         m_header.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
 
+#if 0
         m_searchKernel.setArg(1, m_header[0]);
         m_searchKernel.setArg(2, m_dag[0]);
         m_searchKernel.setArg(3, m_dagItems);
+#endif
 
         // create mining buffers
         ETHCL_LOG("Creating mining buffer");
         m_searchBuffer.clear();
         m_searchBuffer.emplace_back(m_context[0], CL_MEM_WRITE_ONLY, sizeof(SearchResults));
 
+#if 0
         m_dagKernel.setArg(1, m_light[0]);
         m_dagKernel.setArg(2, m_dag[0]);
         m_dagKernel.setArg(3, (uint32_t)(m_epochContext.lightSize / 64));
@@ -902,6 +926,7 @@ bool CLMiner::initEpoch_internal()
         cllog << dev::getFormattedMemory((double)m_epochContext.dagSize)
               << " of DAG data generated in "
               << dagTime.count() << " ms.";
+#endif
     }
     catch (cl::Error const& err)
     {
