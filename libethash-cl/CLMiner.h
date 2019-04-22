@@ -75,6 +75,7 @@ private:
     vector<cl::Buffer> m_light;
     vector<cl::Buffer> m_header;
     vector<cl::Buffer> m_searchBuffer;
+    vector<cl::Buffer> m_target;
 
     CLSettings m_settings;
 

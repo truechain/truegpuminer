@@ -279,8 +279,7 @@ struct SearchResults
         uint32_t gid;
         // Can't use h256 data type here since h256 contains
         // more than raw data. Kernel returns raw mix hash.
-        uint32_t mix[8];
-        uint32_t pad[7];  // pad to 16 words for easy indexing
+        uint8_t mix[32];
     } rslt[c_maxSearchResults];
     uint32_t count;
     uint32_t hashCount;
@@ -301,6 +300,12 @@ void CLMiner::workLoop()
     if (!initDevice())
     return;
 
+    // TODO: move dataset generation to init epoch
+    table_init(m_dataset);
+    // TODO: set work size for device
+    m_settings.globalWorkSize = 128;
+    m_settings.localWorkSize = 1;
+
     try
     {
         while (!shouldStop())
@@ -315,9 +320,10 @@ void CLMiner::workLoop()
                 m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE,
                     offsetof(SearchResults, count),
                     (m_settings.noExit ? 1 : 2) * sizeof(results.count), (void*)&results.count);
-#if 0
+
                 if (results.count)
                 {
+                    cllog << "result found: " << results.count;
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
                         results.count * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
@@ -329,7 +335,6 @@ void CLMiner::workLoop()
                 if (!m_settings.noExit)
                     m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
                         offsetof(SearchResults, count), sizeof(zerox3), zerox3);
-#endif
             }
             else
                 results.count = 0;
@@ -347,7 +352,7 @@ void CLMiner::workLoop()
 
             if (current.header != w.header)
             {
-                cllog << "set work package";
+                cllog << "fetch work " << w.header;
 //              if (current.epoch != w.epoch)
 //              {
 //                  m_abortqueue.clear();
@@ -362,16 +367,19 @@ void CLMiner::workLoop()
                 // Set dataset constant buffer.
                 m_queue[0].enqueueWriteBuffer(
                     m_dag[0], CL_FALSE, 0, sizeof(m_dataset), m_dataset);
-
+#if 0
                 // Upper 64 bits of the boundary.
                 const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
                 assert(target > 0);
-
+#endif
                 startNonce = w.startNonce;
 
                 // Update header constant buffer.
                 m_queue[0].enqueueWriteBuffer(
                     m_header[0], CL_FALSE, 0, w.header.size, w.header.data());
+                //Update target constant buffer
+                m_queue[0].enqueueWriteBuffer(
+                    m_target[0], CL_FALSE, 0, w.boundary.size, w.boundary.data());
                 // zero the result count
                 m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
                     offsetof(SearchResults, count),
@@ -380,9 +388,9 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(0, m_searchBuffer[0]);  // Supply output buffer to kernel.
                 m_searchKernel.setArg(1, m_header[0]);        // Supply header buffer to kernel.
                 m_searchKernel.setArg(2, m_dag[0]);           // Supply DAG buffer to kernel.
-                m_searchKernel.setArg(3, target);
+                m_searchKernel.setArg(3, m_target[0]);
 
-                cllog << "run kernel startnonce: " << startNonce;
+                cllog << "start kernel startnonce: " << startNonce;
 
 #ifdef DEV_BUILD
                 if (g_logOptions & LOG_SWITCH)
@@ -394,13 +402,13 @@ void CLMiner::workLoop()
 #endif
             }
 
+            cllog << "iterate kernel startnonce: " << startNonce;
 
             // Run the kernel.
             m_searchKernel.setArg(4, startNonce);
             m_queue[0].enqueueNDRangeKernel(
                 m_searchKernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
 
-#if 0
             if (results.count)
             {
                 // Report results while the kernel is running.
@@ -412,7 +420,13 @@ void CLMiner::workLoop()
                         m_lastNonce = nonce;
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-
+//                      cllog << "found solution nonce: 0x" << toHex(nonce) << " gid: " << results.rslt[i].gid << " mix: 0x" << mix;
+                        {
+                            auto _s = Solution{
+                                nonce, mix, current, std::chrono::steady_clock::now(), m_index};
+                            cllog << "found 0x" << toHex(nonce) << " 0x" << _s.work.header.hex()
+                                << " 0x" << _s.mixHash.hex() << " gid " << results.rslt[i].gid;
+                        }
                         Farm::f().submitProof(Solution{
                             nonce, mix, current, std::chrono::steady_clock::now(), m_index});
                         cllog << EthWhite << "Job: " << current.header.abridged() << " Sol: 0x"
@@ -421,7 +435,6 @@ void CLMiner::workLoop()
                 }
             }
 
-#endif
             current = w;  // kernel now processing newest work
             current.startNonce = startNonce;
             // Increase start nonce for following kernel execution.
@@ -884,6 +897,10 @@ bool CLMiner::initEpoch_internal()
         ETHCL_LOG("Creating buffer for header.");
         m_header.clear();
         m_header.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
+
+        // create buffer for fruit and block target
+        m_target.clear();
+        m_target.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
 
 #if 0
         m_searchKernel.setArg(1, m_header[0]);

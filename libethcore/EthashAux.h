@@ -112,8 +112,7 @@ struct WorkPackage
 
     std::string job;  // Job identifier can be anything. Not necessarily a hash
 
-    h256 boundary;      // 0-15: block target;16-31:fruit target
-    h256 fruitBoundary; // fruit target
+    h256 boundary;    // 0-15: block target;16-31:fruit target
     h256 header;  ///< When h256() means "pause until notified a new work package is available".
     h256 seed;
 

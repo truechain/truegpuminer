@@ -422,31 +422,15 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
 
                 newWp.header = h256(JPrm.get(Json::Value::ArrayIndex(0), "").asString());
                 newWp.seed = h256(JPrm.get(Json::Value::ArrayIndex(1), "").asString());
-//              newWp.fruitBoundary = h256(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
-//              newWp.boundary = h256(JPrm.get(Json::Value::ArrayIndex(3), "").asString());
-                using namespace boost::multiprecision;
-                using BigInteger = boost::multiprecision::cpp_int;
                 {
-                    // GetWork return fruit and block difficulty
-                    BigInteger max = BigInteger("0xffffffffffffffffffffffffffffffff");
-                    BigInteger fruit = BigInteger(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
-                    fruit = max / fruit;
-                    stringstream ss;
-                    ss << "0x" << setw(64) << setfill('0') << std::hex << fruit;
-                    string target = ss.str();
-                    boost::algorithm::to_lower(target);
-                    newWp.fruitBoundary = h256(target);
-                }
-                {
-                    // GetWork return fruit and block difficulty
-                    BigInteger max = BigInteger("0xffffffffffffffffffffffffffffffff");
-                    BigInteger block = BigInteger(JPrm.get(Json::Value::ArrayIndex(3), "").asString());
-                    block = max / block;
-                    stringstream ss;
-                    ss << "0x" << setw(64) << setfill('0') << std::hex << block;
-                    string target = ss.str();
-                    boost::algorithm::to_lower(target);
-                    newWp.boundary = h256(target);
+                    auto fruit = h128(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
+                    auto block = h128(JPrm.get(Json::Value::ArrayIndex(3), "").asString());
+                    for (int i = 0; i < 16; ++i) {
+                        newWp.boundary[i] = block[i];
+                    }
+                    for (int i = 0; i < 16; ++i) {
+                        newWp.boundary[i+16] = fruit[i];
+                    }
                 }
                 newWp.job = newWp.header.hex();
                 if (m_current.header != newWp.header)
@@ -552,7 +536,7 @@ void EthGetworkClient::submitHashrate(uint64_t const& rate, string const& id)
         Json::Value jReq;
         jReq["id"] = unsigned(9);
         jReq["jsonrpc"] = "2.0";
-        jReq["method"] = "eth_submitHashrate";
+        jReq["method"] = "etrue_submitHashrate";
         jReq["params"] = Json::Value(Json::arrayValue);
         jReq["params"].append(toHex(rate, HexPrefix::Add));  // Already expressed as hex
         jReq["params"].append(id);                           // Already prefixed by 0x
@@ -573,7 +557,7 @@ void EthGetworkClient::submitSolution(const Solution& solution)
         jReq["id"] = id;
         jReq["jsonrpc"] = "2.0";
         m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
-        jReq["method"] = "eth_submitWork";
+        jReq["method"] = "etrue_submitWork";
         jReq["params"] = Json::Value(Json::arrayValue);
         jReq["params"].append("0x" + nonceHex);
         jReq["params"].append("0x" + solution.work.header.hex());

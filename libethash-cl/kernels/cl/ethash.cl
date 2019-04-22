@@ -6,6 +6,15 @@
 #define DGST_SIZE       32
 #define TARG_SIZE       16
 
+#define mem_copy(dest, src, size)   do { \
+    char *psrc = (void *)src; \
+    char *pdest = (void *)dest; \
+    for (int i = 0; i < size; ++i) { \
+        pdest[i] = psrc[i]; \
+    } \
+} while(0)
+
+
 #ifndef KECCAKF_ROUNDS
 #define KECCAKF_ROUNDS 24
 #endif
@@ -416,8 +425,7 @@ void fchainhash(uint64_t dataset[], uint8_t mining_hash[DGST_SIZE], uint64_t non
 struct SearchResults {
     struct {
         uint gid;
-        uint mix[8];
-        uint pad[7]; // pad to 16 words for easy indexing
+        uchar mix[32];
     } rslt[MAX_OUTPUTS];
     uint count;
     uint hashCount;
@@ -428,11 +436,32 @@ __kernel void search(
     __global struct SearchResults* restrict g_output,
     __global uchar *header,
     __global ulong *g_dataset,
-    ulong target,
+    __global uchar *target,
     ulong start_nonce
 )
 {
-    uint8_t digs[DGST_SIZE];
-//  fchainhash((uint64_t *)g_dataset, (uint8_t *)header, start_nonce, digs);
+    uint8_t digs[DGST_SIZE] = {0};
+
+    // CL use local size 1
+    const uint gid = get_global_id(0);
+    start_nonce += gid;
+
+    fchainhash((uint64_t *)g_dataset, (uint8_t *)header, start_nonce, digs);
+
+#if 1
+    uint8_t * fruit_digest = (uchar *)digs + TARG_SIZE;
+    uint8_t * fruit_target = (uchar *)target + TARG_SIZE;
+    for (int i = 0; i < TARG_SIZE; i++) {
+        if (fruit_digest[i] > fruit_target[i]) {
+            break;
+        }
+        if (fruit_digest[i] < fruit_target[i]) {
+            uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
+            g_output->rslt[slot].gid = gid;
+            mem_copy(g_output->rslt[slot].mix, digs, 32);
+            break;
+        }
+    }
+#endif
 }
 

@@ -492,6 +492,8 @@ void Farm::submitProofAsync(Solution const& _s)
 {
     if (!m_Settings.noEval)
     {
+        // TODO: re-evaluate the miner solution using libminerva
+#if 0
         Result r = EthashAux::eval(_s.work.epoch, _s.work.header, _s.nonce);
         if (r.value > _s.work.boundary)
         {
@@ -501,6 +503,8 @@ void Farm::submitProofAsync(Solution const& _s)
             return;
         }
         m_onSolutionFound(Solution{_s.nonce, r.mixHash, _s.work, _s.tstamp, _s.midx});
+#endif
+        m_onSolutionFound(_s);
     }
     else
         m_onSolutionFound(_s);
