@@ -748,14 +748,6 @@ bool EthStratumClient::handle_miner_work(bool bnotify,unsigned _id,Json::Value& 
             cwarn << "Stratum miner work: invalid parameters";
             return false;
         }
-        bool ex = false;
-        if (!_dsmgr.has_dataset(seedhash)) {
-            // seedhash not match,will be update dataset
-            // make sure stop all minering
-            if(m_ds_updating.compare_exchange_strong(ex, true, std::memory_order_relaxed)) {
-                request_dataset(seedhash);
-            }
-        }
         
         m_current.seed = h256(seedhash);
         m_current.header = h256(headhash);
@@ -763,10 +755,20 @@ bool EthStratumClient::handle_miner_work(bool bnotify,unsigned _id,Json::Value& 
         m_current.startNonce = 0;
         m_current.exSizeBytes = 0;
         m_current_timestamp = std::chrono::steady_clock::now();
-    
+        m_current.ds = _dsmgr.get_dataset(seedhash);
+        if (nullptr == m_current.ds) {
+            // seedhash not match,will be update dataset
+            // make sure stop all minering
+            bool ex = false;
+            if(m_ds_updating.compare_exchange_strong(ex, true, std::memory_order_relaxed)) {
+                request_dataset(seedhash);
+            }
+            m_newjobprocessed = false;
+        } else {
+            m_newjobprocessed = true;
+        }
         // This will signal to dispatch the job
-        // at the end of the transmission.
-        m_newjobprocessed = true;
+        // at the end of the transmission. 
         return true;
     }
     return false;
@@ -911,55 +913,18 @@ void EthStratumClient::submitSolution(const Solution& solution)
 
     Json::Value jReq;
 
-    unsigned id = 40 + solution.midx;
+    unsigned id = 3;
     jReq["id"] = id;
+    jReq["jsonrpc"] = "2.0";
     m_solution_submitted_max_id = max(m_solution_submitted_max_id, id);
-    jReq["method"] = "mining.submit";
+    jReq["method"] = "etrue_submitWork";
     jReq["params"] = Json::Value(Json::arrayValue);
-
-    switch (m_conn->StratumMode())
-    {
-    case EthStratumClient::STRATUM:
-
-        jReq["jsonrpc"] = "2.0";
-        jReq["params"].append(m_conn->User());
-        jReq["params"].append(solution.work.job);
-        jReq["params"].append(toHex(solution.nonce, HexPrefix::Add));
-        jReq["params"].append(solution.work.header.hex(HexPrefix::Add));
-        jReq["params"].append(solution.mixHash.hex(HexPrefix::Add));
-        if (!m_conn->Workername().empty())
-            jReq["worker"] = m_conn->Workername();
-
-        break;
-
-    case EthStratumClient::ETHPROXY:
-
-        jReq["method"] = "eth_submitWork";
-        jReq["params"].append(toHex(solution.nonce, HexPrefix::Add));
-        jReq["params"].append(solution.work.header.hex(HexPrefix::Add));
-        jReq["params"].append(solution.mixHash.hex(HexPrefix::Add));
-        if (!m_conn->Workername().empty())
-            jReq["worker"] = m_conn->Workername();
-
-        break;
-
-    case EthStratumClient::ETHEREUMSTRATUM:
-
-        jReq["params"].append(m_conn->UserDotWorker());
-        jReq["params"].append(solution.work.job);
-        jReq["params"].append(
-            toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
-        break;
+    jReq["params"].append(toHex(solution.nonce, HexPrefix::Add));
+    jReq["params"].append(solution.work.header.hex(HexPrefix::Add));
+    jReq["params"].append(solution.mixHash.hex(HexPrefix::Add));
+    if (!m_conn->Workername().empty())
+        jReq["worker"] = m_conn->Workername();
         
-    case EthStratumClient::ETHEREUMSTRATUM2:
-
-        jReq["params"].append(solution.work.job);
-        jReq["params"].append(
-            toHex(solution.nonce, HexPrefix::DontAdd).substr(solution.work.exSizeBytes));
-        jReq["params"].append(m_session->workerId);
-        break;        
-    }
-
     enqueue_response_plea();
     send(jReq);
 }
