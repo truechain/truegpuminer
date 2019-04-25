@@ -22,6 +22,8 @@
 #include <libdevcore/Worker.h>
 
 #include <ethash/ethash.hpp>
+#include <memory>
+#include <map>
 
 namespace dev
 {
@@ -57,7 +59,7 @@ struct WorkPackage
 
     std::string job;  // Job identifier can be anything. Not necessarily a hash
 
-    h256 boundary;
+    h256 boundary;      // 0-15: block target;16-31:fruit target
     h256 fruitBoundary; // fruit target
     h256 header;  ///< When h256() means "pause until notified a new work package is available".
     h256 seed;
@@ -68,7 +70,9 @@ struct WorkPackage
     uint64_t startNonce = 0;
     uint16_t exSizeBytes = 0;
 
-    std::string algo = "ethash";
+    std::string algo = "minerva";
+
+    std::shared_ptr<true_dataset> ds;
 };
 
 struct Solution
@@ -78,6 +82,78 @@ struct Solution
     WorkPackage work;                              // WorkPackage this solution refers to
     std::chrono::steady_clock::time_point tstamp;  // Timestamp of found solution
     unsigned midx;                                 // Originating miner Id
+};
+
+class true_dataset
+{
+public:
+    true_dataset(int l){
+        if (l > 0) {
+            dataset = std::make_shared<uint64_t>(new uint64_t[l],[](uint64_t* p){ if(p){delete [] p;} });
+            len = l;   
+        }
+    }
+    // true_dataset()
+    ~true_dataset() {
+    }
+    void make(uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16]) {
+        // init dataset for spec seeds
+        uint64_t *tmp = (uint64_t*)dataset.get();
+    }
+    void init(){
+        uint64_t *tmp = (uint64_t*)dataset.get();
+    }
+    std::shared_ptr<uint64_t> dataset;
+	std::string     seed_hash;
+	int 	        len;
+};
+
+class dataset_mgr 
+{
+public:
+    dataset_mgr(){
+        sum = 5;
+    }
+    ~dataset_mgr(){
+        
+    }
+    void init(int len) {
+        true_dataset first(len);
+        first.init();
+        set_dataset(&first);
+    }
+    std::shared_ptr<true_dataset> get_dataset(std::string &seed_hash) {
+        dev::Guard g(cs);
+        auto it = m_ds.find(seed_hash);
+        if (it == m_ds.end()) {
+            return nullptr;
+        }
+        return it->second;
+    }
+    void set_dataset(true_dataset *ds) {
+        dev::Guard g(cs);
+        auto it = m_ds.find(ds.seed_hash);
+        if (it == m_ds.end()) {
+            if (m_ds.size() >= sum) {
+                m_ds.erase(m_ds.begin());       // ????
+            }
+            std::shared_ptr<true_dataset> sp(*ds);
+            m_ds[ds.seed_hash] = sp;
+        }
+    }
+    bool has_dataset(std::string &seed_hash) {
+        dev::Guard g(cs);
+        auto it = m_ds.find(seed_hash);
+        if (it == m_ds.end()) {
+            return false;
+        }
+        return true;
+    }
+
+private:
+    std::map<std::string,std::shared_ptr<true_dataset>> m_ds;
+    dev::Mutex cs;
+    int sum;
 };
 
 }  // namespace eth

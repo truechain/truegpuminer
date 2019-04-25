@@ -84,6 +84,18 @@ public:
     bool current() { return static_cast<bool>(m_current); }
 
 private:
+    bool handle_miner_work(bool bnotify, unsigned _id,Json::Value& responseObject);
+    bool handle_dataset(unsigned _id,Json::Value& responseObject);
+    bool handle_hashrate(unsigned _id,Json::Value& responseObject);
+    bool handle_get_version(unsigned _id,Json::Value& responseObject);
+    bool handle_login(unsigned _id,Json::Value& responseObject);
+    void request_dataset(string const &seedhash);
+
+    bool make_and_update_ds(string const& seed_hash,uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16]);
+
+    void init_dataset();
+
+private:
     void startSession();
     void disconnect_finalize();
     void enqueue_response_plea();
@@ -111,6 +123,8 @@ private:
     std::atomic<bool> m_connecting = {false};
     std::atomic<bool> m_authpending = {false};
 
+    // dataset for minerval miner
+    std::atomic<bool> m_ds_updating = {false};
     // seconds to trigger a work_timeout (overwritten in constructor)
     int m_worktimeout;
 
