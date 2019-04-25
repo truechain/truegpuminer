@@ -61,8 +61,12 @@ class true_dataset
 public:
     true_dataset(int l){
         if (l > 0) {
-            dataset = std::make_shared<uint64_t>(new uint64_t[l],[](uint64_t* p){ if(p){delete [] p;} });
+            std::shared_ptr<uint64_t> tmp(new uint64_t[l],[](uint64_t* p){ if(p){delete [] p;} });
+            dataset = tmp;
             len = l;   
+        } else {
+            len = 0;
+            dataset = nullptr;
         }
     }
     true_dataset(const true_dataset& tt) {
@@ -149,8 +153,8 @@ public:
             if (m_ds.size() >= sum) {
                 m_ds.erase(m_ds.begin());       // ????
             }
-            std::shared_ptr<true_dataset> sp(*ds);
-            m_ds[ds.seed_hash] = sp;
+            std::shared_ptr<true_dataset> sp = std::make_shared<true_dataset>(*ds);
+            m_ds[ds->seed_hash] = sp;
         }
     }
     bool has_dataset(std::string &seed_hash) {
