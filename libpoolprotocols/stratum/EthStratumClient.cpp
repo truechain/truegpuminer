@@ -744,7 +744,7 @@ bool EthStratumClient::handle_miner_work(bool bnotify,unsigned _id,Json::Value& 
         string headhash = jPrm.get(Json::Value::ArrayIndex(0), "").asString();
         string seedhash = jPrm.get(Json::Value::ArrayIndex(1), "").asString();
         string target = jPrm.get(Json::Value::ArrayIndex(2), "").asString();
-        if (headhash.length() != 66 seedhash.length() != 66 || target.length() != 66) {
+        if (headhash.length() != 66 || seedhash.length() != 66 || target.length() != 66) {
             cwarn << "Stratum miner work: invalid parameters";
             return false;
         }
@@ -780,7 +780,7 @@ bool EthStratumClient::handle_dataset(unsigned _id,Json::Value& responseObject)
     if (jResult.isArray() && !jResult.empty()) {
         jSeed = jResult.get(Json::Value::ArrayIndex(0), Json::Value::null);
         if (!jSeed.empty()){
-            int seed_count = jSeed.count();
+            int seed_count = jSeed.length();
             if(seed_count == (OFF_CYCLE_LEN + SKIP_CYCLE_LEN)) {
                 string seed;
                 uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16] = { 0 };
@@ -791,7 +791,7 @@ bool EthStratumClient::handle_dataset(unsigned _id,Json::Value& responseObject)
                         cwarn<<"Stratum update dataset: invalid seed,i:"<<i<<"seed:"<<seed;
                         return false;
                     }
-                    memcpy(seed[i],h128(seed).data(),16);
+                    memcpy(seeds[i],h128(seed).data(),16);
                 }
                 seed_hash = jResult.get(Json::Value::ArrayIndex(1),"").asString();
                 if (seed_hash.length() != 66) {
@@ -870,7 +870,7 @@ void EthStratumClient::submitHashrate(uint64_t const& rate, string const& id)
     jReq["params"] = Json::Value(Json::arrayValue);
     jReq["params"].append(toCompactHex(rate, HexPrefix::DontAdd));
     jReq["error"] = Json::Value::null;
-    
+
     send(jReq);
 }
 
