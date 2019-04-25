@@ -780,7 +780,7 @@ bool EthStratumClient::handle_dataset(unsigned _id,Json::Value& responseObject)
     if (jResult.isArray() && !jResult.empty()) {
         jSeed = jResult.get(Json::Value::ArrayIndex(0), Json::Value::null);
         if (!jSeed.empty()){
-            int seed_count = jSeed.length();
+            int seed_count = jSeed.size();
             if(seed_count == (OFF_CYCLE_LEN + SKIP_CYCLE_LEN)) {
                 string seed;
                 uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16] = { 0 };
