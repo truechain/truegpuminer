@@ -130,7 +130,7 @@ void EthStratumClient::init_socket()
 #endif
 }
 void EthStratumClient::init_dataset() {
-    _dsmgr.init(dataset_len)
+    _dsmgr.init(dataset_len);
 }
 
 void EthStratumClient::connect()
@@ -700,7 +700,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
     string _method = responseObject.get("method", "").asString();
     bool bnotify = _id == 0 && _method == "etrue_notify";
 
-    if (!_isCuccess) {
+    if (!_isSuccess) {
         cwarn << "Pool sent an invalid jsonrpc message...,method:"<<_method<<"error:"<<_errReason;
         cwarn << "Disconnecting...";
         m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));  // ????
@@ -717,8 +717,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
         handle_hashrate(_id,responseObject);
     } else if (_method == "etrue_get_hashrate") {
         handle_login(_id,responseObject);
-    } else if (_id == 3)    // result for submit {
-
+    } else if (_id == 3) { 
+        // result for submit
     } else {
         cwarn << "Got unknown method [" << _method << "] from pool. Discarding...";
         Json::Value jReq;
