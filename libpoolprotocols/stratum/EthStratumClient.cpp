@@ -10,8 +10,7 @@
 #endif
 
 
-#define OFF_CYCLE_LEN  8192	    	 //8192  2080
-#define SKIP_CYCLE_LEN 2048     	//2048 520
+
 #define DATALENGTH  2048	 //2048 520
 #define PMTSIZE  4
 #define TBLSIZE  16
@@ -757,6 +756,7 @@ bool EthStratumClient::handle_miner_work(bool bnotify,unsigned _id,Json::Value& 
                 request_dataset(seedhash);
             }
         }
+        
         m_current.seed = h256(seedhash);
         m_current.header = h256(headhash);
         m_current.boundary = h256(target);

@@ -25,6 +25,11 @@
 #include <memory>
 #include <map>
 
+
+#define OFF_CYCLE_LEN  8192	    	 //8192  2080
+#define SKIP_CYCLE_LEN 2048     	//2048 520
+
+
 namespace dev
 {
 namespace eth
@@ -49,6 +54,30 @@ struct EpochContext
     const ethash_hash512* lightCache;
     int dagNumItems;
     uint64_t dagSize;
+};
+
+class true_dataset
+{
+public:
+    true_dataset(int l){
+        if (l > 0) {
+            dataset = std::make_shared<uint64_t>(new uint64_t[l],[](uint64_t* p){ if(p){delete [] p;} });
+            len = l;   
+        }
+    }
+    // true_dataset()
+    ~true_dataset() {
+    }
+    void make(uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16]) {
+        // init dataset for spec seeds
+        uint64_t *tmp = (uint64_t*)dataset.get();
+    }
+    void init(){
+        uint64_t *tmp = (uint64_t*)dataset.get();
+    }
+    std::shared_ptr<uint64_t> dataset;
+	std::string     seed_hash;
+	int 	        len;
 };
 
 struct WorkPackage
@@ -84,29 +113,7 @@ struct Solution
     unsigned midx;                                 // Originating miner Id
 };
 
-class true_dataset
-{
-public:
-    true_dataset(int l){
-        if (l > 0) {
-            dataset = std::make_shared<uint64_t>(new uint64_t[l],[](uint64_t* p){ if(p){delete [] p;} });
-            len = l;   
-        }
-    }
-    // true_dataset()
-    ~true_dataset() {
-    }
-    void make(uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16]) {
-        // init dataset for spec seeds
-        uint64_t *tmp = (uint64_t*)dataset.get();
-    }
-    void init(){
-        uint64_t *tmp = (uint64_t*)dataset.get();
-    }
-    std::shared_ptr<uint64_t> dataset;
-	std::string     seed_hash;
-	int 	        len;
-};
+
 
 class dataset_mgr 
 {
@@ -132,7 +139,7 @@ public:
     }
     void set_dataset(true_dataset *ds) {
         dev::Guard g(cs);
-        auto it = m_ds.find(ds.seed_hash);
+        auto it = m_ds.find(ds->seed_hash);
         if (it == m_ds.end()) {
             if (m_ds.size() >= sum) {
                 m_ds.erase(m_ds.begin());       // ????
