@@ -865,41 +865,12 @@ void EthStratumClient::submitHashrate(uint64_t const& rate, string const& id)
         return;
 
     Json::Value jReq;
-    jReq["id"] = unsigned(9);
+    jReq["id"] = unsigned(6);
+    jReq["method"] = "etrue_get_hashrate";
     jReq["params"] = Json::Value(Json::arrayValue);
-
-    if (m_conn->StratumMode() != 3)
-    {
-        // There is no stratum method to submit the hashrate so we use the rpc variant.
-        // Note !!
-        // id = 6 is also the id used by ethermine.org and nanopool to push new jobs
-        // thus we will be in trouble if we want to check the result of hashrate submission
-        // actually change the id from 6 to 9
-        jReq["jsonrpc"] = "2.0";
-        if (!m_conn->Workername().empty())
-            jReq["worker"] = m_conn->Workername();
-        jReq["method"] = "eth_submitHashrate";
-        jReq["params"].append(toHex(rate, HexPrefix::Add, 32));  // Already expressed as hex
-        jReq["params"].append(id);                               // Already prefixed by 0x
-    }
-    else
-    {
-        /*
-        {
-          "id" : 9,
-          "method": "mining.hashrate",
-          "params": [
-              "500000",
-              "w-123"
-              ]
-        }
-        */
-
-        jReq["method"] = "mining.hashrate";
-        jReq["params"].append(toCompactHex(rate, HexPrefix::DontAdd));
-        jReq["params"].append(m_session->workerId);
-    }
-
+    jReq["params"].append(toCompactHex(rate, HexPrefix::DontAdd));
+    jReq["error"] = Json::Value::null;
+    
     send(jReq);
 }
 
@@ -924,7 +895,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
     jReq["params"].append(solution.mixHash.hex(HexPrefix::Add));
     if (!m_conn->Workername().empty())
         jReq["worker"] = m_conn->Workername();
-        
+
     enqueue_response_plea();
     send(jReq);
 }
