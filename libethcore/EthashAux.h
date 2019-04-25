@@ -65,6 +65,11 @@ public:
             len = l;   
         }
     }
+    true_dataset(const true_dataset& tt) {
+        dataset = tt.dataset;
+        seed_hash = tt.seed_hash;
+        len = tt.len;
+    }
     // true_dataset()
     ~true_dataset() {
     }
