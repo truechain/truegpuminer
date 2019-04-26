@@ -22,6 +22,7 @@
 #include <libdevcore/Worker.h>
 
 #include <ethash/ethash.hpp>
+#include <libminerva/mtool.h>
 #include <memory>
 #include <map>
 
@@ -80,9 +81,17 @@ public:
     void make(uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16]) {
         // init dataset for spec seeds
         uint64_t *tmp = (uint64_t*)dataset.get();
+        tmp = eturetools::etrue_ds::updateLookupTBL(seeds,tmp,len);
+        uint8_t hash[32]={0};
+        eturetools::etrue_ds::dataset_hash(hash,tmp,len);
+        seed_hash = h256(hash).hex(HexPrefix::Add);
     }
     void init(){
         uint64_t *tmp = (uint64_t*)dataset.get();
+        eturetools::etrue_ds::truehashTableInit(tmp,len);
+        uint8_t hash[32]={0};
+        eturetools::etrue_ds::dataset_hash(hash,tmp,len);
+        seed_hash = h256(hash).hex(HexPrefix::Add);
     }
     // note: donot use it before delete the sp
     uint64_t* get_dataset() {
