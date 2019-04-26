@@ -84,6 +84,7 @@ public:
         tmp = eturetools::etrue_ds::updateLookupTBL(seeds,tmp,len);
         uint8_t hash[32]={0};
         eturetools::etrue_ds::dataset_hash(hash,tmp,len);
+        h256 hh(hash,dev::FixedHash<32>::ConstructFromPointerType::ConstructFromPointer);
         seed_hash = h256(hash).hex(HexPrefix::Add);
     }
     void init(){
@@ -91,7 +92,8 @@ public:
         eturetools::etrue_ds::truehashTableInit(tmp,len);
         uint8_t hash[32]={0};
         eturetools::etrue_ds::dataset_hash(hash,tmp,len);
-        seed_hash = h256(hash).hex(HexPrefix::Add);
+		h256 hh(hash,dev::FixedHash<32>::ConstructFromPointerType::ConstructFromPointer);
+        seed_hash = hh.hex(HexPrefix::Add);
     }
     // note: donot use it before delete the sp
     uint64_t* get_dataset() {
