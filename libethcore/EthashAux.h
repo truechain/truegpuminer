@@ -84,6 +84,10 @@ public:
     void init(){
         uint64_t *tmp = (uint64_t*)dataset.get();
     }
+    // note: donot use it before delete the sp
+    uint64_t* get_dataset() {
+        return (uint64_t*)dataset.get();
+    }
     std::shared_ptr<uint64_t> dataset;
 	std::string     seed_hash;
 	int 	        len;
