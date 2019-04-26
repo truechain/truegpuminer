@@ -85,7 +85,7 @@ public:
         uint8_t hash[32]={0};
         eturetools::etrue_ds::dataset_hash(hash,tmp,len);
         h256 hh(hash,dev::FixedHash<32>::ConstructFromPointerType::ConstructFromPointer);
-        seed_hash = h256(hash).hex(HexPrefix::Add);
+        seed_hash = h256((bytes *)hash).hex(HexPrefix::Add);
     }
     void init(){
         uint64_t *tmp = (uint64_t*)dataset.get();
