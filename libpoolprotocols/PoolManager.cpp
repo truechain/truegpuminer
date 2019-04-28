@@ -192,9 +192,11 @@ void PoolManager::setClientHandlers()
             m_currentWp.epoch = _currentEpoch;
         }
 
+        // TODO: hash format crash here, need to be fixed
+#if 0
         if (newDiff || newEpoch)
             showMiningAt();
-
+#endif
         cnote << "Job: " EthWhite << m_currentWp.header.abridged()
               << (m_currentWp.block != -1 ? (" block " + to_string(m_currentWp.block)) : "")
               << EthReset << " " << m_selectedHost;
