@@ -335,7 +335,7 @@ int byteReverse(uint8_t sha512_out[64])
     return 0;
 }
 
-void fchainhash(__global uint64_t *dataset, __global uint8_t mining_hash[DGST_SIZE], uint64_t nonce, uint8_t digs[DGST_SIZE])
+void fchainhash(__global uint64_t *dataset, __global uint8_t *mining_hash, uint64_t nonce, uint8_t digs[])
 {
         uint8_t seed[64] = { 0 };
         uint8_t output[DGST_SIZE] = { 0 };
