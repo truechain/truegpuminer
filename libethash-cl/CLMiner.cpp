@@ -352,9 +352,10 @@ void CLMiner::workLoop()
 
             if (current.header != w.header)
             {
-                cllog << "fetch work " << w.header.abridged();
+                cllog << "fetch work " << w.header.abridged() << " seed " << w.seed.abridged();
 //              if (current.epoch != w.epoch)
-//              {
+                if (current.seed != w.seed)
+                {
 //                  m_abortqueue.clear();
                     cllog << "init epoch";
 
@@ -362,7 +363,7 @@ void CLMiner::workLoop()
                         break;  // This will simply exit the thread
 
 //                  m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
-//              }
+                }
 
                 // Set dataset constant buffer.
                 m_queue[0].enqueueWriteBuffer(
@@ -424,7 +425,7 @@ void CLMiner::workLoop()
                         {
                             auto _s = Solution{
                                 nonce, mix, current, std::chrono::steady_clock::now(), m_index};
-                            cllog << "found 0x" << toHex(nonce) << " header " << _s.work.header.abridged()
+                            cllog << "found job " << _s.work.header.abridged() << " 0x" << toHex(nonce)
                                 << " 0x" << _s.mixHash.hex() << " gid " << results.rslt[i].gid;
                         }
                         Farm::f().submitProof(Solution{
@@ -448,7 +449,6 @@ void CLMiner::workLoop()
 
         if (m_queue.size())
             m_queue[0].finish();
-
     }
     catch (cl::Error const& _e)
     {
