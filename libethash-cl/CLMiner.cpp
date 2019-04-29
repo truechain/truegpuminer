@@ -352,7 +352,7 @@ void CLMiner::workLoop()
 
             if (current.header != w.header)
             {
-                cllog << "fetch work " << w.header;
+                cllog << "fetch work " << w.header.abridged();
 //              if (current.epoch != w.epoch)
 //              {
 //                  m_abortqueue.clear();
@@ -424,7 +424,7 @@ void CLMiner::workLoop()
                         {
                             auto _s = Solution{
                                 nonce, mix, current, std::chrono::steady_clock::now(), m_index};
-                            cllog << "found 0x" << toHex(nonce) << " 0x" << _s.work.header.hex()
+                            cllog << "found 0x" << toHex(nonce) << " header " << _s.work.header.abridged()
                                 << " 0x" << _s.mixHash.hex() << " gid " << results.rslt[i].gid;
                         }
                         Farm::f().submitProof(Solution{
@@ -448,6 +448,7 @@ void CLMiner::workLoop()
 
         if (m_queue.size())
             m_queue[0].finish();
+
     }
     catch (cl::Error const& _e)
     {

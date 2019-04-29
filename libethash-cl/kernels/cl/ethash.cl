@@ -433,6 +433,7 @@ __kernel void search(
 {
     __global uint8_t *fruit_target = target + TARG_SIZE;
     uint8_t digs[DGST_SIZE] = {0};
+    int results = 0;
 
     // CL use local size 1 for dev purpose
     const uint gid = get_global_id(0);
@@ -446,12 +447,25 @@ __kernel void search(
             break;
         }
         if (fruit_digest[i] < fruit_target[i]) {
-            uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
-            g_output->rslt[slot].gid = gid;
-            for (int i = 0; i < 32; ++i) {
-                g_output->rslt[slot].mix[i] = digs[i];
-            }
+            ++results;
             break;
+        }
+    }
+
+    for (int i = 0; i < TARG_SIZE; i++) {
+        if (digs[i] > target[i]) {
+            break;
+        }
+        if (digs[i] < target[i]) {
+            ++results;
+            break;
+        }
+    }
+    if (results) {
+        uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
+        g_output->rslt[slot].gid = gid;
+        for (int i = 0; i < 32; ++i) {
+            g_output->rslt[slot].mix[i] = digs[i];
         }
     }
 }
