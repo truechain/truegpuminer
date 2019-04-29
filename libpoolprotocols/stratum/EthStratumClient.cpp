@@ -733,17 +733,18 @@ void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject){
         if (1 == _id) {      // handle login       
             cwarn<<"login failed...will disconnect";
             m_authpending.store(false, std::memory_order_relaxed);
+            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
         } else if (3 == _id) { // handle submit
             cwarn<<"submit failed...will disconnect";
+            stratum_request_work();
         }
-        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+        
     } else {
         cwarn<<"login success...";
         m_authpending.store(true, std::memory_order_relaxed);
         stratum_request_work();
     }
 }
-void EthStratumClient::handle_works(unsigned _id){
 void EthStratumClient::stratum_request_work(){
     Json::Value jReq;
     jReq["id"] = unsigned(2);
