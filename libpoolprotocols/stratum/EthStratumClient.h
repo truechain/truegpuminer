@@ -88,8 +88,9 @@ private:
     bool handle_dataset(unsigned _id,Json::Value& responseObject);
     bool handle_hashrate(unsigned _id,Json::Value& responseObject);
     bool handle_get_version(unsigned _id,Json::Value& responseObject);
-    bool handle_login(unsigned _id,Json::Value& responseObject);
     void request_dataset(string const &seedhash);
+    void handle_works(unsigned _id,Json::Value& responseObject);
+    void stratum_request_work();
 
     bool make_and_update_ds(string const& seed_hash,uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16]);
 

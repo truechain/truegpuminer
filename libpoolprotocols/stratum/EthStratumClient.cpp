@@ -715,10 +715,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
         handle_get_version(_id,responseObject);
     } else if (_method == "etrue_get_hashrate") {
         handle_hashrate(_id,responseObject);
-    } else if (_method == "etrue_get_hashrate") {
-        handle_login(_id,responseObject);
-    } else if (_id == 3) { 
-        // result for submit
+    } else if (_id == 3 || _id == 1) { 
+        handle_works(_id,responseObject);
     } else {
         cwarn << "Got unknown method [" << _method << "] from pool. Discarding...";
         Json::Value jReq;
@@ -728,6 +726,30 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
 
         send(jReq);           
     }
+}
+void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject){
+    Json::Value jResult = responseObject.get("result", Json::Value::null);
+    if (jResult.empty() || (jResult.isBool() && !jResult.asBool())) {
+        if (1 == _id) {      // handle login       
+            cwarn<<"login failed...will disconnect";
+            m_authpending.store(false, std::memory_order_relaxed);
+        } else if (3 == _id) { // handle submit
+            cwarn<<"submit failed...will disconnect";
+        }
+        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+    } else {
+        cwarn<<"login success...";
+        m_authpending.store(true, std::memory_order_relaxed);
+        stratum_request_work();
+    }
+}
+void EthStratumClient::handle_works(unsigned _id){
+void EthStratumClient::stratum_request_work(){
+    Json::Value jReq;
+    jReq["id"] = unsigned(2);
+    jReq["jsonrpc"] = "2.0";
+    jReq["method"] = "etrue_getWork";
+    send(jReq);   
 }
 bool EthStratumClient::handle_miner_work(bool bnotify,unsigned _id,Json::Value& responseObject)
 {
@@ -828,19 +850,6 @@ bool EthStratumClient::handle_get_version(unsigned _id,Json::Value& responseObje
     send(jReq);
            
     return true;
-}
-bool EthStratumClient::handle_login(unsigned _id,Json::Value& responseObject) {
-    if (_id == 1) {
-        Json::Value jResult = responseObject.get("result", Json::Value::null);
-        if (jResult.empty() || (jResult.isBool() && !jResult.asBool())) {
-            cwarn<<"login failed...will disconnect";
-            m_authpending.store(false, std::memory_order_relaxed);
-            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-        } else {
-            cwarn<<"login success...";
-            m_authpending.store(true, std::memory_order_relaxed);
-        }
-    }
 }
 bool EthStratumClient::make_and_update_ds(string const& seed_hash,uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16])
 {
