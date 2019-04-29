@@ -6,15 +6,6 @@
 #define DGST_SIZE       32
 #define TARG_SIZE       16
 
-#define mem_copy(dest, src, size)   do { \
-    char *psrc = (void *)src; \
-    char *pdest = (void *)dest; \
-    for (int i = 0; i < size; ++i) { \
-        pdest[i] = psrc[i]; \
-    } \
-} while(0)
-
-
 #ifndef KECCAKF_ROUNDS
 #define KECCAKF_ROUNDS 24
 #endif
@@ -247,7 +238,7 @@ int xor64(uint64_t val) {
 }
 
 
-int muliple(uint64_t input[32], uint64_t *prow)
+int muliple(uint64_t input[32], __global uint64_t *prow)
 {
     int r = 0;
     for (int k = 0; k < 32; k++)
@@ -260,9 +251,9 @@ int muliple(uint64_t input[32], uint64_t *prow)
 }
 
 
-int MatMuliple(uint64_t input[32], uint64_t output[32], uint64_t pmat[])
+int MatMuliple(uint64_t input[32], uint64_t output[32], __global uint64_t *pmat)
 {
-    uint64_t *prow = pmat;
+    __global uint64_t *prow = pmat;
 
     for (int k = 0; k < 2048; k++)
     {
@@ -306,9 +297,9 @@ int shift2048(uint64_t in[32], int sf)
 }
 
 
-int scramble(uint64_t *permute_in, uint64_t dataset[])
+int scramble(uint64_t *permute_in, __global uint64_t *dataset)
 {
-    uint64_t *ptbl;
+    __global uint64_t *ptbl;
     uint64_t permute_out[32] = { 0 };
 
     for (int k = 0; k < 64; k++)
@@ -344,7 +335,7 @@ int byteReverse(uint8_t sha512_out[64])
     return 0;
 }
 
-void fchainhash(uint64_t dataset[], uint8_t mining_hash[DGST_SIZE], uint64_t nonce, uint8_t digs[DGST_SIZE])
+void fchainhash(__global uint64_t *dataset, __global uint8_t *mining_hash, uint64_t nonce, uint8_t digs[])
 {
         uint8_t seed[64] = { 0 };
         uint8_t output[DGST_SIZE] = { 0 };
@@ -440,28 +431,42 @@ __kernel void search(
     ulong start_nonce
 )
 {
+    __global uint8_t *fruit_target = target + TARG_SIZE;
     uint8_t digs[DGST_SIZE] = {0};
+    int results = 0;
 
-    // CL use local size 1
+    // CL use local size 1 for dev purpose
     const uint gid = get_global_id(0);
     start_nonce += gid;
 
-    fchainhash((uint64_t *)g_dataset, (uint8_t *)header, start_nonce, digs);
+    fchainhash(g_dataset, header, start_nonce, digs);
 
-#if 1
-    uint8_t * fruit_digest = (uchar *)digs + TARG_SIZE;
-    uint8_t * fruit_target = (uchar *)target + TARG_SIZE;
+    uint8_t *fruit_digest = (uchar *)digs + TARG_SIZE;
     for (int i = 0; i < TARG_SIZE; i++) {
         if (fruit_digest[i] > fruit_target[i]) {
             break;
         }
         if (fruit_digest[i] < fruit_target[i]) {
-            uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
-            g_output->rslt[slot].gid = gid;
-            mem_copy(g_output->rslt[slot].mix, digs, 32);
+            ++results;
             break;
         }
     }
-#endif
+
+    for (int i = 0; i < TARG_SIZE; i++) {
+        if (digs[i] > target[i]) {
+            break;
+        }
+        if (digs[i] < target[i]) {
+            ++results;
+            break;
+        }
+    }
+    if (results) {
+        uint slot = min(MAX_OUTPUTS - 1u, atomic_inc(&g_output->count));
+        g_output->rslt[slot].gid = gid;
+        for (int i = 0; i < 32; ++i) {
+            g_output->rslt[slot].mix[i] = digs[i];
+        }
+    }
 }
 
