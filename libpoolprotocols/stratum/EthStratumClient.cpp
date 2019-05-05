@@ -729,20 +729,29 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
 }
 void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject){
     Json::Value jResult = responseObject.get("result", Json::Value::null);
-    if (jResult.empty() || (jResult.isBool() && !jResult.asBool())) {
-        if (1 == _id) {      // handle login       
-            cwarn<<"login failed...will disconnect";
-            m_authpending.store(false, std::memory_order_relaxed);
-            m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-        } else if (3 == _id) { // handle submit
-            cwarn<<"submit failed...will disconnect";
-            stratum_request_work();
+    if (!jResult.empty()) {
+        if (jResult.isBool() && jResult.asBool()) {
+            if (_id == 1) {
+                cwarn<<"login success...";
+                startSession();
+                m_authpending.store(true, std::memory_order_relaxed);
+                stratum_request_work();
+                enqueue_response_plea();
+            } else {
+                cwarn<<"submit success...";
+                m_authpending.store(true, std::memory_order_relaxed);
+                stratum_request_work();
+            }
+        } else {
+            string tmp = _id == 1 ? "load failed,return false" : "submit failed,return false";
+            cwarn << tmp;
+            if (1 == _id) {
+                m_authpending.store(false, std::memory_order_relaxed);
+                m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+            } else {
+                stratum_request_work();
+            }
         }
-        
-    } else {
-        cwarn<<"login success...";
-        m_authpending.store(true, std::memory_order_relaxed);
-        stratum_request_work();
     }
 }
 void EthStratumClient::stratum_request_work(){
