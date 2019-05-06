@@ -845,10 +845,10 @@ void etrue_minerva_cpu::fchainmining(uint64_t *plookup,int plen, uint8_t header[
 		dat_in[k*4+2] = temp;
 	}
 	uint8_t output[32] = { 0 };
-	uint8_t dgst[DGSTSIZE] = { 0 };
+	uint8_t dgst[DGST_SIZE] = { 0 };
 	sha3(dat_in,256,output,32);
 	// reverse byte
-	for (int k = 0; k < DGSTSIZE; k++) {
+	for (int k = 0; k < DGST_SIZE; k++) {
 		dgst[k] = output[k];
 	}
     memcpy(digset,dgst,32);
