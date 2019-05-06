@@ -729,17 +729,22 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
 }
 void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject){
     Json::Value jResult = responseObject.get("result", Json::Value::null);
+    std::chrono::milliseconds response_delay_ms(0);
+    response_delay_ms = dequeue_response_plea();
+
     if (!jResult.empty()) {
         if (jResult.isBool() && jResult.asBool()) {
             if (_id == 1) {
                 cwarn<<"login success...";
                 startSession();
                 m_authpending.store(true, std::memory_order_relaxed);
+                m_session->authorized.store(true, std::memory_order_relaxed);
                 stratum_request_work();
-                enqueue_response_plea();
             } else {
                 cwarn<<"submit success...";
                 m_authpending.store(true, std::memory_order_relaxed);
+                if (m_onSolutionAccepted)
+                    m_onSolutionAccepted(response_delay_ms, 0, false);
                 stratum_request_work();
             }
         } else {
@@ -749,6 +754,9 @@ void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject){
                 m_authpending.store(false, std::memory_order_relaxed);
                 m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             } else {
+                 if (m_onSolutionRejected){
+                    m_onSolutionRejected(response_delay_ms, 0);
+                }
                 stratum_request_work();
             }
         }
@@ -760,6 +768,8 @@ void EthStratumClient::stratum_request_work(){
     jReq["jsonrpc"] = "2.0";
     jReq["method"] = "etrue_getWork";
     send(jReq);   
+    enqueue_response_plea();
+
 }
 bool EthStratumClient::handle_miner_work(bool bnotify,unsigned _id,Json::Value& responseObject)
 {
@@ -915,7 +925,7 @@ void EthStratumClient::submitSolution(const Solution& solution)
     if (!m_conn->Workername().empty())
         jReq["worker"] = m_conn->Workername();
 
-    enqueue_response_plea();
+    // enqueue_response_plea();
     send(jReq);
 }
 
