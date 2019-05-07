@@ -301,7 +301,7 @@ void CLMiner::workLoop()
     return;
 
     // TODO: move dataset generation to init epoch
-    table_init(m_dataset);
+    // table_init(m_dataset);
     // TODO: set work size for device
     m_settings.globalWorkSize = 128;
     m_settings.localWorkSize = 1;
@@ -362,12 +362,13 @@ void CLMiner::workLoop()
                     if (!initEpoch())
                         break;  // This will simply exit the thread
 
+                    // Set dataset constant buffer.
+                    m_queue[0].enqueueWriteBuffer(
+                        m_dag[0], CL_FALSE, 0, sizeof(uint64_t)*DATASET_SIZE, w.ds->get_dataset());
+
 //                  m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
                 }
 
-                // Set dataset constant buffer.
-                m_queue[0].enqueueWriteBuffer(
-                    m_dag[0], CL_FALSE, 0, sizeof(m_dataset), m_dataset);
 #if 0
                 // Upper 64 bits of the boundary.
                 const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
