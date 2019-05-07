@@ -23,7 +23,7 @@ namespace eth
 // WARNING: Do not change the value of the following constant
 // unless you are prepared to make the neccessary adjustments
 // to the assembly code for the binary kernels.
-const size_t c_maxSearchResults = 15;
+const size_t c_maxSearchResults = 50;
 
 struct CLChannel : public LogChannel
 {
@@ -302,9 +302,6 @@ void CLMiner::workLoop()
 
     // TODO: move dataset generation to init epoch
     // table_init(m_dataset);
-    // TODO: set work size for device
-    m_settings.globalWorkSize = 128;
-    m_settings.localWorkSize = 1;
 
     try
     {
@@ -422,13 +419,14 @@ void CLMiner::workLoop()
                         m_lastNonce = nonce;
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-//                      cllog << "found solution nonce: 0x" << toHex(nonce) << " gid: " << results.rslt[i].gid << " mix: 0x" << mix;
+#if 0
                         {
                             auto _s = Solution{
                                 nonce, mix, current, std::chrono::steady_clock::now(), m_index};
                             cllog << "found job " << _s.work.header.abridged() << " 0x" << toHex(nonce)
                                 << " 0x" << _s.mixHash.hex() << " gid " << results.rslt[i].gid;
                         }
+#endif
                         Farm::f().submitProof(Solution{
                             nonce, mix, current, std::chrono::steady_clock::now(), m_index});
                         cllog << EthWhite << "Job: " << current.header.abridged() << " Sol: 0x"
