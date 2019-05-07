@@ -13,6 +13,17 @@ namespace eturetools {
 #define OFF_CYCLE_LEN  8192	    	 //8192  2080
 #define SKIP_CYCLE_LEN 2048     	//2048 520
 
+struct miner_result
+{
+    miner_result(){
+        found = false;
+        nonce = 0;
+        memset(mix_hash,0,DGST_SIZE);
+    }
+    uint64_t nonce;
+    uint8_t mix_hash[DGST_SIZE];
+    bool found;
+};
 
 class etrue_ds{
 public: 
@@ -25,7 +36,7 @@ public:
 
 class etrue_minerva_cpu {
 public:
-    static void truehashFull(uint64_t *dataset,int dlen,uint8_t hash[DGST_SIZE], uint64_t nonce,uint8_t digset[DGST_SIZE]);
+    static miner_result& search(uint64_t *dataset,int dlen,uint8_t hash[DGST_SIZE], uint8_t target[DGST_SIZE],uint64_t nonce,uint64_t iterations);
 private:
     static int byteReverse(uint8_t *sha512_out,int len);
     static int xor64(uint64_t val);

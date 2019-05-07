@@ -855,6 +855,29 @@ void etrue_minerva_cpu::fchainmining(uint64_t *plookup,int plen, uint8_t header[
 	return;
 }
 
-void etrue_minerva_cpu::truehashFull(uint64_t *dataset,int dlen,uint8_t hash[DGST_SIZE], uint64_t nonce,uint8_t digset[DGST_SIZE]){
-	fchainmining(dataset,dlen, hash, nonce,digset);
+miner_result& etrue_minerva_cpu::search(uint64_t *dataset,int dlen,uint8_t hash[DGST_SIZE], uint8_t target[DGST_SIZE],uint64_t nonce,uint64_t iterations){
+
+	miner_result res;
+	res.nonce = nonce;
+	uint8_t t_fruit[16] = { 0 }, t_block[16] = { 0 };
+	memcpy(t_block, target, 16);
+	memcpy(t_fruit, target + 16, 16);
+
+	for (uint64_t i=0;i<iterations;i++) {
+
+		fchainmining(dataset,dlen, hash, nonce,res.mix_hash);
+		// block
+		if (memcmp(res.mix_hash, t_block, 16) < 0) {
+			res.found = true;
+			break;
+		}
+		// fruit
+		if (memcmp(res.mix_hash+16, t_fruit, 16) < 0) {
+			res.found = true;
+			break;
+		}
+		res.nonce++;
+	}
+	
+	return res;
 }
