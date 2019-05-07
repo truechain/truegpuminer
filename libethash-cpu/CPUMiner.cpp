@@ -30,7 +30,7 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 #endif
 
 #include <libethcore/Farm.h>
-#include <ethash/ethash.hpp>
+//#include <ethash/ethash.hpp>
 #include <libminerva/mtool.h>
 #include <boost/version.hpp>
 
