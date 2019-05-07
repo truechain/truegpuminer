@@ -99,6 +99,7 @@ public:
     uint64_t* get_dataset() {
         return (uint64_t*)dataset.get();
     }
+    int get_dataset_len() {return len;}
     std::shared_ptr<uint64_t> dataset;
 	std::string     seed_hash;
 	int 	        len;

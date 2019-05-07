@@ -31,7 +31,7 @@ along with ethminer.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <libethcore/Farm.h>
 #include <ethash/ethash.hpp>
-
+#include <libminerva/mtool.h>
 #include <boost/version.hpp>
 
 #if 0
@@ -233,10 +233,6 @@ void CPUMiner::kick_miner()
 void CPUMiner::search(const dev::eth::WorkPackage& w)
 {
     constexpr size_t blocksize = 30;
-
-    const auto& context = ethash::get_global_epoch_context_full(w.epoch);
-    const auto header = ethash::hash256_from_bytes(w.header.data());
-    const auto boundary = ethash::hash256_from_bytes(w.boundary.data());
     auto nonce = w.startNonce;
 
     while (true)
@@ -249,12 +245,13 @@ void CPUMiner::search(const dev::eth::WorkPackage& w)
 
         if (shouldStop())
             break;
+        
+        auto r = eturetools::etrue_minerva_cpu::search(w.ds->get_dataset(),w.ds->get_dataset_len(), 
+        w.header.data(), w.boundary.data(), nonce, blocksize);
 
-
-        auto r = ethash::search(context, header, boundary, nonce, blocksize);
         if (r.solution_found)
         {
-            h256 mix{reinterpret_cast<byte*>(r.mix_hash.bytes), h256::ConstructFromPointer};
+            h256 mix{reinterpret_cast<byte*>(r.mix_hash), h256::ConstructFromPointer};
             auto sol = Solution{r.nonce, mix, w, std::chrono::steady_clock::now(), m_index};
 
             cpulog << EthWhite << "Job: " << w.header.abridged()
@@ -295,7 +292,7 @@ void CPUMiner::workLoop()
             continue;
         }
 
-        if (w.algo == "ethash")
+        if (w.algo == "minerva")
         {
             // Epoch change ?
             if (current.epoch != w.epoch)
