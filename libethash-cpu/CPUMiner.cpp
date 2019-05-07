@@ -234,6 +234,9 @@ void CPUMiner::search(const dev::eth::WorkPackage& w)
 {
     constexpr size_t blocksize = 30;
     auto nonce = w.startNonce;
+    uint8_t head[DGST_SIZE] = {0},target[DGST_SIZE]={0};
+    memcpy(head,w.header.data(),DGST_SIZE);
+    memcpy(target,w.boundary.data(),DGST_SIZE);
 
     while (true)
     {
@@ -247,9 +250,9 @@ void CPUMiner::search(const dev::eth::WorkPackage& w)
             break;
         
         auto r = eturetools::etrue_minerva_cpu::search(w.ds->get_dataset(),w.ds->get_dataset_len(), 
-        w.header.data(), w.boundary.data(), nonce, blocksize);
+        (uint8_t*)head, (uint8_t*)target, nonce, blocksize);
 
-        if (r.solution_found)
+        if (r.found)
         {
             h256 mix{reinterpret_cast<byte*>(r.mix_hash), h256::ConstructFromPointer};
             auto sol = Solution{r.nonce, mix, w, std::chrono::steady_clock::now(), m_index};
