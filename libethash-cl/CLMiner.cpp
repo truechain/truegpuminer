@@ -23,7 +23,7 @@ namespace eth
 // WARNING: Do not change the value of the following constant
 // unless you are prepared to make the neccessary adjustments
 // to the assembly code for the binary kernels.
-const size_t c_maxSearchResults = 50;
+const size_t c_maxSearchResults = 15;
 
 struct CLChannel : public LogChannel
 {
@@ -322,7 +322,7 @@ void CLMiner::workLoop()
                 {
                     cllog << "result found: " << results.count;
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
-                        results.count * sizeof(results.rslt[0]), (void*)&results);
+                        c_maxSearchResults * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
                     if (m_settings.noExit)
                         m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
@@ -411,7 +411,7 @@ void CLMiner::workLoop()
             if (results.count)
             {
                 // Report results while the kernel is running.
-                for (uint32_t i = 0; i < results.count; i++)
+                for (uint32_t i = 0; i < results.count && i < (c_maxSearchResults - 1); i++)
                 {
                     uint64_t nonce = current.startNonce + results.rslt[i].gid;
                     if (nonce != m_lastNonce)
