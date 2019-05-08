@@ -300,9 +300,6 @@ void CLMiner::workLoop()
     if (!initDevice())
     return;
 
-    // TODO: move dataset generation to init epoch
-    // table_init(m_dataset);
-
     try
     {
         while (!shouldStop())
@@ -869,7 +866,7 @@ bool CLMiner::initEpoch_internal()
                          (double)(m_deviceDescriptor.totalMemory - RequiredMemory));
 #endif
             m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, sizeof(m_dataset)));
+            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, sizeof(uint64_t) * DATASET_SIZE));
             cllog << "Loading kernels, " << "binary " << loadedBinary;
 
             // If we have a binary kernel to use, let's try it

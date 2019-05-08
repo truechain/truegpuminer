@@ -61,9 +61,6 @@ private:
     
     void workLoop() override;
 
-    // Dataset generated from table with fixed length
-    uint64_t m_dataset[DATASET_SIZE];
-
     vector<cl::Context> m_context;
     vector<cl::CommandQueue> m_queue;
     vector<cl::CommandQueue> m_abortqueue;
