@@ -110,6 +110,7 @@ struct CLSettings : public MinerSettings
     unsigned globalWorkSize = 0;
     unsigned globalWorkSizeMultiplier = 64;
     unsigned localWorkSize = 128;
+    unsigned cacheSize = 16384;
 };
 
 // Holds settings for CPU Miner

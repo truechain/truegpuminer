@@ -260,6 +260,7 @@ CLMiner::CLMiner(unsigned _index, CLSettings _settings, DeviceDescriptor& _devic
     m_deviceDescriptor = _device;
     m_settings.localWorkSize = ((m_settings.localWorkSize + 7) / 8) * 8;
     m_settings.globalWorkSize = m_settings.localWorkSize * m_settings.globalWorkSizeMultiplier;
+    initCache();
 }
 
 CLMiner::~CLMiner()
@@ -385,6 +386,7 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(1, m_header[0]);        // Supply header buffer to kernel.
                 m_searchKernel.setArg(2, m_dag[0]);           // Supply DAG buffer to kernel.
                 m_searchKernel.setArg(3, m_target[0]);
+                m_searchKernel.setArg(4, m_cacheBuffer[0]);
 
                 cllog << "start kernel startnonce: " << startNonce;
 
@@ -401,7 +403,7 @@ void CLMiner::workLoop()
             cllog << "iterate kernel startnonce: " << startNonce;
 
             // Run the kernel.
-            m_searchKernel.setArg(4, startNonce);
+            m_searchKernel.setArg(5, startNonce);
             m_queue[0].enqueueNDRangeKernel(
                 m_searchKernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
 
@@ -462,6 +464,22 @@ void CLMiner::kick_miner()
             m_searchBuffer[0], CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
 
     m_new_work_signal.notify_one();
+}
+
+void CLMiner::initCache()
+{
+    m_cache.resize(m_settings.cacheSize);
+    for (unsigned int i = 0; i < m_settings.cacheSize; i++)
+    {
+        uint64_t r = 0;
+        uint64_t val = i;
+        for (int j = 0; j < 64; j++)
+        {
+            r ^= val & 0x1;
+            val >>= 1;
+        }
+        m_cache[i] = (uint8_t)r;
+    }
 }
 
 void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection) 
@@ -899,6 +917,8 @@ bool CLMiner::initEpoch_internal()
         m_target.clear();
         m_target.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
 
+        m_cacheBuffer.clear();
+        m_cacheBuffer.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_settings.cacheSize));
 #if 0
         m_searchKernel.setArg(1, m_header[0]);
         m_searchKernel.setArg(2, m_dag[0]);
@@ -909,6 +929,9 @@ bool CLMiner::initEpoch_internal()
         ETHCL_LOG("Creating mining buffer");
         m_searchBuffer.clear();
         m_searchBuffer.emplace_back(m_context[0], CL_MEM_WRITE_ONLY, sizeof(SearchResults));
+
+        m_queue[0].enqueueWriteBuffer(
+            m_cacheBuffer[0], CL_FALSE, 0, m_cache.size(), m_cache.data());
 
 #if 0
         m_dagKernel.setArg(1, m_light[0]);
