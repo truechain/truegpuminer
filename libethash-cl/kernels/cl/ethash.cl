@@ -230,15 +230,13 @@ void shake_out(sha3_ctx_t *c, void *out, size_t len)
 int xor64(uint64_t val, __constant uint8_t *cache) {
     int r  = 0;
 
-    r ^= cache[val & 0x3fff];
-    val >>= 14;
-    r ^= cache[val & 0x3fff];
-    val >>= 14;
-    r ^= cache[val & 0x3fff];
-    val >>= 14;
-    r ^= cache[val & 0x3fff];
-    val >>= 14;
-    r ^= cache[val & 0x3fff];
+    r ^= cache[val & 0xffff];
+    val >>= 16;
+    r ^= cache[val & 0xffff];
+    val >>= 16;
+    r ^= cache[val & 0xffff];
+    val >>= 16;
+    r ^= cache[val & 0xffff];
 
     return r;
 }
