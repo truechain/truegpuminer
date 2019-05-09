@@ -61,8 +61,7 @@ private:
     
     void workLoop() override;
 
-    // Dataset generated from table with fixed length
-    uint64_t m_dataset[DATASET_SIZE];
+    void initCache();
 
     vector<cl::Context> m_context;
     vector<cl::CommandQueue> m_queue;
@@ -76,12 +75,14 @@ private:
     vector<cl::Buffer> m_header;
     vector<cl::Buffer> m_searchBuffer;
     vector<cl::Buffer> m_target;
+    vector<cl::Buffer> m_cacheBuffer;
 
     CLSettings m_settings;
 
     unsigned m_dagItems = 0;
     uint64_t m_lastNonce = 0;
 
+    vector<uint8_t> m_cache;
 };
 
 }  // namespace eth

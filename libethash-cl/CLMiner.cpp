@@ -260,6 +260,7 @@ CLMiner::CLMiner(unsigned _index, CLSettings _settings, DeviceDescriptor& _devic
     m_deviceDescriptor = _device;
     m_settings.localWorkSize = ((m_settings.localWorkSize + 7) / 8) * 8;
     m_settings.globalWorkSize = m_settings.localWorkSize * m_settings.globalWorkSizeMultiplier;
+    initCache();
 }
 
 CLMiner::~CLMiner()
@@ -300,12 +301,6 @@ void CLMiner::workLoop()
     if (!initDevice())
     return;
 
-    // TODO: move dataset generation to init epoch
-    table_init(m_dataset);
-    // TODO: set work size for device
-    m_settings.globalWorkSize = 128;
-    m_settings.localWorkSize = 1;
-
     try
     {
         while (!shouldStop())
@@ -325,7 +320,7 @@ void CLMiner::workLoop()
                 {
                     cllog << "result found: " << results.count;
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
-                        results.count * sizeof(results.rslt[0]), (void*)&results);
+                        c_maxSearchResults * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
                     if (m_settings.noExit)
                         m_queue[0].enqueueWriteBuffer(m_searchBuffer[0], CL_FALSE,
@@ -362,12 +357,13 @@ void CLMiner::workLoop()
                     if (!initEpoch())
                         break;  // This will simply exit the thread
 
+                    // Set dataset constant buffer.
+                    m_queue[0].enqueueWriteBuffer(
+                        m_dag[0], CL_FALSE, 0, sizeof(uint64_t)*DATASET_SIZE, w.ds->get_dataset());
+
 //                  m_abortqueue.push_back(cl::CommandQueue(m_context[0], m_device));
                 }
 
-                // Set dataset constant buffer.
-                m_queue[0].enqueueWriteBuffer(
-                    m_dag[0], CL_FALSE, 0, sizeof(m_dataset), m_dataset);
 #if 0
                 // Upper 64 bits of the boundary.
                 const uint64_t target = (uint64_t)(u64)((u256)w.boundary >> 192);
@@ -390,6 +386,7 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(1, m_header[0]);        // Supply header buffer to kernel.
                 m_searchKernel.setArg(2, m_dag[0]);           // Supply DAG buffer to kernel.
                 m_searchKernel.setArg(3, m_target[0]);
+                m_searchKernel.setArg(4, m_cacheBuffer[0]);
 
                 cllog << "start kernel startnonce: " << startNonce;
 
@@ -406,14 +403,14 @@ void CLMiner::workLoop()
             cllog << "iterate kernel startnonce: " << startNonce;
 
             // Run the kernel.
-            m_searchKernel.setArg(4, startNonce);
+            m_searchKernel.setArg(5, startNonce);
             m_queue[0].enqueueNDRangeKernel(
                 m_searchKernel, cl::NullRange, m_settings.globalWorkSize, m_settings.localWorkSize);
 
             if (results.count)
             {
                 // Report results while the kernel is running.
-                for (uint32_t i = 0; i < results.count; i++)
+                for (uint32_t i = 0; i < results.count && i < (c_maxSearchResults - 1); i++)
                 {
                     uint64_t nonce = current.startNonce + results.rslt[i].gid;
                     if (nonce != m_lastNonce)
@@ -421,13 +418,14 @@ void CLMiner::workLoop()
                         m_lastNonce = nonce;
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-//                      cllog << "found solution nonce: 0x" << toHex(nonce) << " gid: " << results.rslt[i].gid << " mix: 0x" << mix;
+#if 0
                         {
                             auto _s = Solution{
                                 nonce, mix, current, std::chrono::steady_clock::now(), m_index};
                             cllog << "found job " << _s.work.header.abridged() << " 0x" << toHex(nonce)
                                 << " 0x" << _s.mixHash.hex() << " gid " << results.rslt[i].gid;
                         }
+#endif
                         Farm::f().submitProof(Solution{
                             nonce, mix, current, std::chrono::steady_clock::now(), m_index});
                         cllog << EthWhite << "Job: " << current.header.abridged() << " Sol: 0x"
@@ -466,6 +464,22 @@ void CLMiner::kick_miner()
             m_searchBuffer[0], CL_TRUE, offsetof(SearchResults, abort), sizeof(one), &one);
 
     m_new_work_signal.notify_one();
+}
+
+void CLMiner::initCache()
+{
+    m_cache.resize(m_settings.cacheSize);
+    for (unsigned int i = 0; i < m_settings.cacheSize; i++)
+    {
+        uint64_t r = 0;
+        uint64_t val = i;
+        for (int j = 0; j < 64; j++)
+        {
+            r ^= val & 0x1;
+            val >>= 1;
+        }
+        m_cache[i] = (uint8_t)r;
+    }
 }
 
 void CLMiner::enumDevices(std::map<string, DeviceDescriptor>& _DevicesCollection) 
@@ -870,7 +884,7 @@ bool CLMiner::initEpoch_internal()
                          (double)(m_deviceDescriptor.totalMemory - RequiredMemory));
 #endif
             m_dag.clear();
-            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, sizeof(m_dataset)));
+            m_dag.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, sizeof(uint64_t) * DATASET_SIZE));
             cllog << "Loading kernels, " << "binary " << loadedBinary;
 
             // If we have a binary kernel to use, let's try it
@@ -903,6 +917,8 @@ bool CLMiner::initEpoch_internal()
         m_target.clear();
         m_target.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, 32));
 
+        m_cacheBuffer.clear();
+        m_cacheBuffer.push_back(cl::Buffer(m_context[0], CL_MEM_READ_ONLY, m_settings.cacheSize));
 #if 0
         m_searchKernel.setArg(1, m_header[0]);
         m_searchKernel.setArg(2, m_dag[0]);
@@ -913,6 +929,9 @@ bool CLMiner::initEpoch_internal()
         ETHCL_LOG("Creating mining buffer");
         m_searchBuffer.clear();
         m_searchBuffer.emplace_back(m_context[0], CL_MEM_WRITE_ONLY, sizeof(SearchResults));
+
+        m_queue[0].enqueueWriteBuffer(
+            m_cacheBuffer[0], CL_FALSE, 0, m_cache.size(), m_cache.data());
 
 #if 0
         m_dagKernel.setArg(1, m_light[0]);

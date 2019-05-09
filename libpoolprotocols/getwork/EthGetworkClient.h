@@ -69,4 +69,6 @@ private:
     std::chrono::time_point<std::chrono::steady_clock> m_current_tstamp;
 
     unsigned m_solution_submitted_max_id;  // maximum json id we used to send a solution
+
+    dataset_mgr _dsmgr;
 };

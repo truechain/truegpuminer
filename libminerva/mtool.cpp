@@ -679,8 +679,9 @@ int etrue_ds::genLookupTable(uint64_t *plookup,int plen, uint32_t *ptable,int tl
 	return 0;
 }
 void etrue_ds::truehashTableInit(uint64_t *tableLookup,int tlen) {
-	uint32_t table[TBLSIZE * DATALENGTH * PMTSIZE] = {0};
-	int tsize = TBLSIZE * DATALENGTH * PMTSIZE;
+
+    int tsize = TBLSIZE * DATALENGTH * PMTSIZE;
+    uint32_t *table = new uint32_t[TBLSIZE * DATALENGTH * PMTSIZE];
 
 	for (int k = 0; k < TBLSIZE; k++) {
 		for (int x = 0; x < DATALENGTH*PMTSIZE; x++) {
@@ -688,6 +689,8 @@ void etrue_ds::truehashTableInit(uint64_t *tableLookup,int tlen) {
 		}
 	}
 	genLookupTable(tableLookup,tlen, table,tsize);
+
+    delete[] table;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////

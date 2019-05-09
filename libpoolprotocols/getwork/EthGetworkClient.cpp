@@ -3,6 +3,7 @@
 #include <chrono>
 
 #include <ethash/ethash.hpp>
+#include <libminerva/hash.h>
 #include <boost/multiprecision/cpp_int.hpp>
 
 using namespace std;
@@ -29,6 +30,8 @@ EthGetworkClient::EthGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
     jGetWork["method"] = "etrue_getWork";
     jGetWork["params"] = Json::Value(Json::arrayValue);
     m_jsonGetWork = std::string(Json::writeString(m_jSwBuilder, jGetWork));
+
+    _dsmgr.init(DATASET_SIZE);
 }
 
 EthGetworkClient::~EthGetworkClient()
@@ -422,6 +425,11 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
 
                 newWp.header = h256(JPrm.get(Json::Value::ArrayIndex(0), "").asString());
                 newWp.seed = h256(JPrm.get(Json::Value::ArrayIndex(1), "").asString());
+                {
+                    // assign dataset pointer
+                    std::string seedHex = JPrm.get(Json::Value::ArrayIndex(1), "").asString();
+                    newWp.ds = _dsmgr.get_dataset(seedHex);
+                }
                 {
                     auto fruit = h128(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
                     auto block = h128(JPrm.get(Json::Value::ArrayIndex(3), "").asString());

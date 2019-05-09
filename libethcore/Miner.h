@@ -106,10 +106,11 @@ struct CUSettings : public MinerSettings
 struct CLSettings : public MinerSettings
 {
     bool noBinary = false;
-    bool noExit = false;
+    bool noExit = true;
     unsigned globalWorkSize = 0;
-    unsigned globalWorkSizeMultiplier = 65536;
+    unsigned globalWorkSizeMultiplier = 64;
     unsigned localWorkSize = 128;
+    unsigned cacheSize = 65536;
 };
 
 // Holds settings for CPU Miner
