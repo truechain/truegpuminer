@@ -149,11 +149,36 @@ double dev::getHashesToTarget(string _target)
 {
     using namespace boost::multiprecision;
     using BigInteger = boost::multiprecision::cpp_int;
-
+#if 0
     static BigInteger dividend(
         "0xffff000000000000000000000000000000000000000000000000000000000000");
     BigInteger divisor(_target);
-    return double(dividend / divisor);
+#endif
+    // This function only return snail block difficulty, block difficulty may
+    // be zero
+    static BigInteger dividend(
+        "0xffffffffffffffffffffffffffffffff");
+    BigInteger divisor(_target.substr(0, 34));
+    if (divisor > 0)
+        return double(dividend / divisor);
+    else
+        return 0.0;
+}
+
+
+double dev::getHashesToFruitTarget(string _target)
+{
+    using namespace boost::multiprecision;
+    using BigInteger = boost::multiprecision::cpp_int;
+
+    // calc fruit difficulty
+    static BigInteger dividend(
+        "0xffffffffffffffffffffffffffffffff");
+    BigInteger divisor(std::string("0x") + _target.substr(34));
+    if (divisor > 0)
+        return double(dividend / divisor);
+    else
+        return 0.0;
 }
 
 std::string dev::getScaledSize(double _value, double _divisor, int _precision, string _sizes[],
