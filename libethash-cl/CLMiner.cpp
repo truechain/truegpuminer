@@ -318,7 +318,6 @@ void CLMiner::workLoop()
 
                 if (results.count)
                 {
-                    cllog << "result found: " << results.count;
                     m_queue[0].enqueueReadBuffer(m_searchBuffer[0], CL_TRUE, 0,
                         c_maxSearchResults * sizeof(results.rslt[0]), (void*)&results);
                     // Reset search buffer if any solution found.
@@ -347,12 +346,13 @@ void CLMiner::workLoop()
 
             if (current.header != w.header)
             {
-                cllog << "fetch work " << w.header.abridged() << " seed " << w.seed.abridged();
+                cllog << "Fetch: " << w.header.abridged() << " seed: " << w.seed.abridged()
+                    << " nonce: 0x" << toHex(w.startNonce);
 //              if (current.epoch != w.epoch)
                 if (current.seed != w.seed)
                 {
 //                  m_abortqueue.clear();
-                    cllog << "init epoch";
+                    cllog << "Init epoch";
 
                     if (!initEpoch())
                         break;  // This will simply exit the thread
@@ -388,8 +388,6 @@ void CLMiner::workLoop()
                 m_searchKernel.setArg(3, m_target[0]);
                 m_searchKernel.setArg(4, m_cacheBuffer[0]);
 
-                cllog << "start kernel startnonce: " << startNonce;
-
 #ifdef DEV_BUILD
                 if (g_logOptions & LOG_SWITCH)
                     cllog << "Switch time: "
@@ -399,8 +397,6 @@ void CLMiner::workLoop()
                           << " us.";
 #endif
             }
-
-            cllog << "iterate kernel startnonce: " << startNonce;
 
             // Run the kernel.
             m_searchKernel.setArg(5, startNonce);
@@ -418,14 +414,6 @@ void CLMiner::workLoop()
                         m_lastNonce = nonce;
                         h256 mix;
                         memcpy(mix.data(), (char*)results.rslt[i].mix, sizeof(results.rslt[i].mix));
-#if 0
-                        {
-                            auto _s = Solution{
-                                nonce, mix, current, std::chrono::steady_clock::now(), m_index};
-                            cllog << "found job " << _s.work.header.abridged() << " 0x" << toHex(nonce)
-                                << " 0x" << _s.mixHash.hex() << " gid " << results.rslt[i].gid;
-                        }
-#endif
                         Farm::f().submitProof(Solution{
                             nonce, mix, current, std::chrono::steady_clock::now(), m_index});
                         cllog << EthWhite << "Job: " << current.header.abridged() << " Sol: 0x"
@@ -764,8 +752,8 @@ bool CLMiner::initEpoch_internal()
         m_context.push_back(cl::Context(vector<cl::Device>(&m_device, &m_device + 1)));
         m_queue.clear();
         m_queue.push_back(cl::CommandQueue(m_context[0], m_device));
-        cllog << "create cl context";
 
+        cllog << "Create cl context";
 
         m_dagItems = m_epochContext.dagNumItems;
 
