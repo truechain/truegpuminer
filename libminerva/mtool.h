@@ -36,7 +36,7 @@ public:
 
 class etrue_minerva_cpu {
 public:
-    static miner_result& search(uint64_t *dataset,int dlen,uint8_t hash[DGST_SIZE], uint8_t target[DGST_SIZE],uint64_t nonce,uint64_t iterations);
+    static miner_result search(uint64_t *dataset,int dlen,uint8_t hash[DGST_SIZE], uint8_t target[DGST_SIZE],uint64_t nonce,uint64_t iterations);
 private:
     static int byteReverse(uint8_t *sha512_out,int len);
     static int xor64(uint64_t val);

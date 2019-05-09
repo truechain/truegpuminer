@@ -855,7 +855,7 @@ void etrue_minerva_cpu::fchainmining(uint64_t *plookup,int plen, uint8_t header[
 	return;
 }
 
-miner_result& etrue_minerva_cpu::search(uint64_t *dataset,int dlen,uint8_t hash[DGST_SIZE], uint8_t target[DGST_SIZE],uint64_t nonce,uint64_t iterations){
+miner_result etrue_minerva_cpu::search(uint64_t *dataset,int dlen,uint8_t hash[DGST_SIZE], uint8_t target[DGST_SIZE],uint64_t nonce,uint64_t iterations){
 
 	miner_result res;
 	res.nonce = nonce;
