@@ -233,6 +233,9 @@ std::string getTargetFromDiff(double diff, HexPrefix _prefix = HexPrefix::Add);
 /// Gets the difficulty expressed in hashes to target
 double getHashesToTarget(std::string _target);
 
+/// Gets the difficulty expressed in hashes to fruit target
+double getHashesToFruitTarget(std::string _target);
+
 /// Generic function to scale a value
 std::string getScaledSize(double _value, double _divisor, int _precision, std::string _sizes[],
     size_t _numsizes, ScaleSuffix _suffix = ScaleSuffix::Add);

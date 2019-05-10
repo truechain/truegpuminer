@@ -192,11 +192,9 @@ void PoolManager::setClientHandlers()
             m_currentWp.epoch = _currentEpoch;
         }
 
-        // TODO: hash format crash here, need to be fixed
-#if 0
         if (newDiff || newEpoch)
             showMiningAt();
-#endif
+
         cnote << "Job: " EthWhite << m_currentWp.header.abridged()
               << (m_currentWp.block != -1 ? (" block " + to_string(m_currentWp.block)) : "")
               << EthReset << " " << m_selectedHost;
@@ -469,8 +467,9 @@ void PoolManager::showMiningAt()
         return;
 
     double d = dev::getHashesToTarget(m_currentWp.boundary.hex(HexPrefix::Add));
+    double f = dev::getHashesToFruitTarget(m_currentWp.boundary.hex(HexPrefix::Add));
     cnote << "Epoch : " EthWhite << m_currentWp.epoch << EthReset << " Difficulty : " EthWhite
-          << dev::getFormattedHashes(d) << EthReset;
+          << dev::getFormattedHashes(d) << EthReset << " Fruit : " EthWhite << dev::getFormattedHashes(f) << EthReset;
 }
 
 void PoolManager::failovertimer_elapsed(const boost::system::error_code& ec)
