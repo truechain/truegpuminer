@@ -1070,7 +1070,8 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
     }
     else
     {
-        m_session->lastTxStamp = chrono::steady_clock::now();
+        if (m_session)
+            m_session->lastTxStamp = chrono::steady_clock::now();
         if (m_txQueue.empty())
             m_txPending.store(false, std::memory_order_relaxed);
         else
