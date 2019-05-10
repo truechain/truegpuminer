@@ -559,6 +559,7 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     and switch to next stratum mode test
     */
     enqueue_response_plea();
+    m_authpending.store(true, std::memory_order_relaxed);
     send(jReq);
 
     DEV_BUILD_LOG_PROGRAMFLOW(cnote, "EthStratumClient::connect_handler() end");
@@ -665,12 +666,12 @@ void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject,std
             if (_id == 1) {
                 cwarn<<"login success...";
                 startSession();
-                m_authpending.store(true, std::memory_order_relaxed);
+                m_authpending.store(false, std::memory_order_relaxed);
                 m_session->authorized.store(true, std::memory_order_relaxed);
                 stratum_request_work();
             } else {
                 cwarn<<"submit success...";
-                m_authpending.store(true, std::memory_order_relaxed);
+                m_authpending.store(false, std::memory_order_relaxed);
                 if (m_onSolutionAccepted)
                     m_onSolutionAccepted(response_delay_ms, 0, false);
                 stratum_request_work();
@@ -679,7 +680,7 @@ void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject,std
             string tmp = _id == 1 ? "load failed,return false,will be disconnect..." : "submit failed,return false";
             cwarn << tmp;
             if (1 == _id) {
-                m_authpending.store(false, std::memory_order_relaxed);
+                m_authpending.store(true, std::memory_order_relaxed);
                 m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             } else {
                  if (m_onSolutionRejected){
