@@ -468,8 +468,8 @@ void PoolManager::showMiningAt()
 
     double d = dev::getHashesToTarget(m_currentWp.boundary.hex(HexPrefix::Add));
     double f = dev::getHashesToFruitTarget(m_currentWp.boundary.hex(HexPrefix::Add));
-    cnote << "Epoch : " EthWhite << m_currentWp.epoch << EthReset << " Difficulty : " EthWhite
-          << dev::getFormattedHashes(d) << EthReset << " Fruit : " EthWhite << dev::getFormattedHashes(f) << EthReset;
+    cnote << "Epoch : " EthWhite << m_currentWp.epoch << EthReset << " BlockDifficulty : " EthWhite
+          << dev::getFormattedHashes(d) << EthReset << " FruitDifficulty : " EthWhite << dev::getFormattedHashes(f) << EthReset;
 }
 
 void PoolManager::failovertimer_elapsed(const boost::system::error_code& ec)

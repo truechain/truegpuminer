@@ -73,6 +73,7 @@ public:
 
     static std::string KnownSchemes(ProtocolFamily family);
 
+    // not use
     void SetStratumMode(unsigned mode, bool confirmed)
     {
         m_stratumMode = mode;
@@ -81,6 +82,8 @@ public:
     void SetStratumMode(unsigned mode) { m_stratumMode = mode; }
     unsigned StratumMode() { return m_stratumMode; }
     bool StratumModeConfirmed() { return m_stratumModeConfirmed; }
+    // not use
+    
     bool IsUnrecoverable() { return m_unrecoverable; }
     void MarkUnrecoverable() { m_unrecoverable = true; }
 
