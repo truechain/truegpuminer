@@ -12,6 +12,8 @@ using namespace eth;
 
 using boost::asio::ip::tcp;
 
+const h256 E0Seed = h256("0x58bc067579760d307143ec1cd416eb3814110d29bf21aba0cd18586e2f038791");
+
 EthGetworkClient::EthGetworkClient(int worktimeout, unsigned farmRecheckPeriod)
   : PoolClient(),
     m_farmRecheckPeriod(farmRecheckPeriod),
@@ -224,9 +226,6 @@ void EthGetworkClient::handle_read(
 {
     if (!ec)
     {
-        // Close socket
-        if (m_socket.is_open())
-            m_socket.close();
 
         // Get the whole message
         std::string rx_message(
@@ -250,6 +249,7 @@ void EthGetworkClient::handle_read(
         std::string linedelimiter = "\r\n";
         std::size_t delimiteroffset = rx_message.find(linedelimiter);
 
+        int length = 0;
         unsigned int linenum = 0;
         bool isHeader = true;
         while (rx_message.length() && delimiteroffset != std::string::npos)
@@ -267,6 +267,11 @@ void EthGetworkClient::handle_read(
                     continue;
                 boost::replace_all(rx_message, "\n", "");
                 line = rx_message;
+            }
+
+            if (isHeader && line.substr(0, 14) == "Content-Length")
+            {
+                length = atoi(line.substr(16).c_str());
             }
 
             // Http status
@@ -304,6 +309,14 @@ void EthGetworkClient::handle_read(
                 if (g_logOptions & LOG_JSON)
                     cnote << " << " << line;
 
+                if (length == 0) {
+                    auto size = boost::asio::read_until(m_socket, m_response, "\n");
+                    std::string remains(
+                        boost::asio::buffer_cast<const char*>(m_response.data()), size);
+                    line += remains;
+                    m_response.consume(size);
+                }
+
                 // Test validity of chunk and process
                 Json::Value jRes;
                 Json::Reader jRdr;
@@ -323,6 +336,10 @@ void EthGetworkClient::handle_read(
 
             delimiteroffset = rx_message.find(linedelimiter);
         }
+
+        // Close socket
+        if (m_socket.is_open())
+            m_socket.close();
 
         // Is there anything else in the queue
         if (!m_txQueue.empty())
@@ -429,6 +446,8 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
                     // assign dataset pointer
                     std::string seedHex = JPrm.get(Json::Value::ArrayIndex(1), "").asString();
                     newWp.ds = _dsmgr.get_dataset(seedHex);
+
+//                  cwarn << "Initial Datast[1024]: " << newWp.ds->get_dataset()[1024];
                 }
                 {
                     auto fruit = h128(JPrm.get(Json::Value::ArrayIndex(2), "").asString());
@@ -443,11 +462,28 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
                 newWp.job = newWp.header.hex();
                 if (m_current.header != newWp.header)
                 {
-                    m_current = newWp;
-                    m_current_tstamp = std::chrono::steady_clock::now();
+                    if (m_current.seed != newWp.seed && newWp.seed != E0Seed)
+                    {
+                        cwarn << "Request dataset " << newWp.seed.abridged() << " current " << m_current.seed.abridged() << " from "<< m_conn->Host() << ":"
+                            << toString(m_conn->Port());
 
-                    if (m_onWorkReceived)
-                        m_onWorkReceived(m_current);
+                        Json::Value jGetDataset;
+                        jGetDataset["id"] = unsigned(3);
+                        jGetDataset["jsonrpc"] = "2.0";
+                        jGetDataset["method"] = "etrue_getDataset";
+                        jGetDataset["params"] = Json::Value(Json::arrayValue);
+                        send(jGetDataset);
+
+                        m_current = newWp;
+                    }
+                    else
+                    {
+                        m_current = newWp;
+                        m_current_tstamp = std::chrono::steady_clock::now();
+
+                        if (m_onWorkReceived)
+                            m_onWorkReceived(m_current);
+                    }
                 }
                 m_getwork_timer.expires_from_now(boost::posix_time::milliseconds(m_farmRecheckPeriod));
                 m_getwork_timer.async_wait(
@@ -456,6 +492,48 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
             }
         }
 
+    }
+    else if (_id == 3)
+    {
+        // Update epoch dataset
+        if (_isSuccess && JRes["result"].isConvertibleTo(Json::ValueType::booleanValue))
+            _isSuccess = JRes["result"].asBool();
+        if (_isSuccess)
+        {
+            if (!JRes.isMember("result"))
+            {
+                cnote << "Missing data for eth_getDataset request from " << m_conn->Host() << ":"
+                      << toString(m_conn->Port());
+            }
+            else
+            {
+                Json::Value JPrm = JRes.get("result", Json::Value::null);
+                uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16];
+                for (unsigned int i = 0; i < JPrm.size(); i++)
+                {
+                    auto seed = JPrm.get(Json::Value::ArrayIndex(i), "").asString();
+                    memcpy(seeds[i], h128(seed).data(), 16);
+                }
+
+                true_dataset ds(DATASET_SIZE);
+                ds.make(seeds);
+                _dsmgr.set_dataset(&ds);
+
+                if (m_current.seed.hex(HexPrefix::Add) != ds.seed_hash) {
+                    cwarn <<"make dataset error\n";
+                    cwarn <<"make dataset,orgi_seed_hash:" << m_current.seed;
+                    cwarn <<"make dataset,seed_hash:" << ds.seed_hash;
+                }
+                m_current.ds = _dsmgr.get_dataset(ds.seed_hash);
+
+                if (m_onWorkReceived)
+                    m_onWorkReceived(m_current);
+            }
+
+        }
+        else
+            cwarn << "Get dataset resply false " << m_conn->Host() << ":"
+                << toString(m_conn->Port());
     }
     else if (_id == 9)
     {
