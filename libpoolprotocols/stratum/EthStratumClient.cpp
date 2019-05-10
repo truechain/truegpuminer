@@ -418,6 +418,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                 {
                     // The socket is closed so that any outstanding
                     // asynchronous connection operations are cancelled.
+                    cnote << "Check responses while in PendingState" << m_responsetimeout << " seconds.";
                     m_socket->close();
                     return;
                 }
@@ -444,27 +445,11 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
             // Delay timeout to a request
             if (response_delay_ms.count() >= (m_responsetimeout * 1000))
             {
-                if (!m_conn->StratumModeConfirmed() && !m_conn->IsUnrecoverable())
-                {
-                    // Waiting for a response from pool to a login request
-                    // Async self send a fake error response
-                    Json::Value jRes;
-                    jRes["id"] = unsigned(1);
-                    jRes["result"] = Json::nullValue;
-                    jRes["error"] = true;
-                    clear_response_pleas();
-                    m_io_service.post(m_io_strand.wrap(
-                        boost::bind(&EthStratumClient::processResponse, this, jRes)));
-                }
-                else
-                {
-                    // Waiting for a response to solution submission
-                    cwarn << "No response received in " << m_responsetimeout << " seconds.";
-                    m_endpoints.pop();
-                    clear_response_pleas();
-                    m_io_service.post(
-                        m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
-                }
+                // Waiting for a response to solution submission
+                cwarn << "No response received in " << m_responsetimeout << " seconds.";
+                m_endpoints.pop();
+                clear_response_pleas();
+                m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             }
             // No work timeout
             else if (m_session &&
@@ -474,8 +459,7 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
                 cwarn << "No new work received in " << m_worktimeout << " seconds.";
                 m_endpoints.pop();
                 clear_response_pleas();
-                m_io_service.post(
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
+                m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));
             }
         }
     }
@@ -701,6 +685,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
     string _method = responseObject.get("method", "").asString();
     bool bnotify = _id == 0 && _method == "etrue_notify";
 
+    std::chrono::milliseconds response_delay_ms(0);
+    response_delay_ms = dequeue_response_plea();
+
     if (!_isSuccess) {
         cwarn << "Pool sent an invalid jsonrpc message...,method:"<<_method<<"error:"<<_errReason;
         cwarn << "Disconnecting...";
@@ -718,7 +705,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
     } else if (_method == "etrue_get_hashrate") {
         handle_hashrate(_id,responseObject);
     } else if (_id == 3 || _id == 1) { 
-        handle_works(_id,responseObject);
+        handle_works(_id,responseObject,response_delay_ms);
     } else {
         cwarn << "Got unknown method [" << _method << "] from pool. Discarding...";
         Json::Value jReq;
@@ -729,11 +716,9 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
         send(jReq);           
     }
 }
-void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject){
+void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject,std::chrono::milliseconds &response_delay_ms){
     Json::Value jResult = responseObject.get("result", Json::Value::null);
-    std::chrono::milliseconds response_delay_ms(0);
-    response_delay_ms = dequeue_response_plea();
-
+    
     if (!jResult.empty()) {
         if (jResult.isBool() && jResult.asBool()) {
             if (_id == 1) {
@@ -861,6 +846,7 @@ bool EthStratumClient::handle_hashrate(unsigned _id,Json::Value& responseObject)
     jReq["method"] = "etrue_get_hashrate";
     jReq["result"] = rate;
     send(jReq);
+    enqueue_response_plea();
     return false;
 }
 bool EthStratumClient::handle_get_version(unsigned _id,Json::Value& responseObject)
@@ -871,7 +857,7 @@ bool EthStratumClient::handle_get_version(unsigned _id,Json::Value& responseObje
     jReq["method"] = "etrue_get_version";
     jReq["result"] = ethminer_get_buildinfo()->project_name_with_version;
     send(jReq);
-           
+    enqueue_response_plea();       
     return true;
 }
 bool EthStratumClient::make_and_update_ds(string const& seed_hash,uint8_t seeds[OFF_CYCLE_LEN + SKIP_CYCLE_LEN][16])
@@ -895,6 +881,7 @@ void EthStratumClient::request_dataset(string const &seedhash) {
     jReq["params"] = Json::Value(Json::arrayValue);
     jReq["params"].append(seedhash);
     send(jReq);  
+    enqueue_response_plea();
 }
 
 void EthStratumClient::submitHashrate(uint64_t const& rate, string const& id)
