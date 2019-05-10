@@ -263,27 +263,7 @@ void EthStratumClient::disconnect_finalize()
 
     if (!m_conn->IsUnrecoverable())
     {
-        // If we got disconnected during autodetection phase
-        // reissue a connect lowering stratum mode checks
-        // m_canconnect flag is used to prevent never-ending loop when
-        // remote endpoint rejects connections attempts persistently since the first
-        if (!m_conn->StratumModeConfirmed() && m_conn->Responds())
-        {
-            // Repost a new connection attempt and advance to next stratum test
-            if (m_conn->StratumMode() > 0)
-            {
-                m_conn->SetStratumMode(m_conn->StratumMode() - 1);
-                m_io_service.post(
-                    m_io_strand.wrap(boost::bind(&EthStratumClient::start_connect, this)));
-                return;
-            }
-            else
-            {
-                // There are no more stratum modes to test
-                // Mark connection as unrecoverable and trash it
-                m_conn->MarkUnrecoverable();
-            }
-        }
+        m_conn->MarkUnrecoverable();
     }
 
     // Clear plea queue and stop timing
@@ -383,20 +363,6 @@ void EthStratumClient::workloop_timer_elapsed(const boost::system::error_code& e
     if (ec == boost::asio::error::operation_aborted)
     {
         return;
-    }
-
-    // No msg from client (EthereumStratum/2.0.0)
-    if (m_conn->StratumMode() == 3 && m_session)
-    {
-        auto s = duration_cast<seconds>(steady_clock::now() - m_session->lastTxStamp).count();
-        if (s > ((int)m_session->timeout - 5))
-        {
-            // Send a message 5 seconds before expiration
-            Json::Value jReq;
-            jReq["id"] = unsigned(7);
-            jReq["method"] = "mining.noop";
-            send(jReq);
-        }
     }
 
 
@@ -569,31 +535,6 @@ void EthStratumClient::connect_handler(const boost::system::error_code& ec)
     // Clean buffer from any previous stale data
     m_sendBuffer.consume(4096);
     clear_response_pleas();
-
-    /*
-
-    If connection has been set-up with a specific scheme then
-    set it's related stratum version as confirmed.
-
-    Otherwise let's go through an autodetection.
-
-    Autodetection process passes all known stratum modes.
-    - 1st pass EthStratumClient::ETHEREUMSTRATUM2 (3)
-    - 2nd pass EthStratumClient::ETHEREUMSTRATUM  (2)
-    - 3rd pass EthStratumClient::ETHPROXY         (1)
-    - 4th pass EthStratumClient::STRATUM          (0)
-    */
-
-    if (m_conn->Version() < 999)
-    {
-        m_conn->SetStratumMode(m_conn->Version(), true);
-    }
-    else
-    {
-        if (!m_conn->StratumModeConfirmed() && m_conn->StratumMode() == 999)
-            m_conn->SetStratumMode(3, false);
-    }
-
 
     Json::Value jReq;
     jReq["id"] = unsigned(1);
@@ -1129,11 +1070,7 @@ void EthStratumClient::onSendSocketDataCompleted(const boost::system::error_code
     }
     else
     {
-        // Register last transmission tstamp to prevent timeout
-        // in EthereumStratum/2.0.0
-        if (m_session && m_conn->StratumMode() == 3)
-            m_session->lastTxStamp = chrono::steady_clock::now();
-
+        m_session->lastTxStamp = chrono::steady_clock::now();
         if (m_txQueue.empty())
             m_txPending.store(false, std::memory_order_relaxed);
         else
