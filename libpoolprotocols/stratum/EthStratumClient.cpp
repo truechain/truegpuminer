@@ -712,6 +712,7 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
         handle_miner_work(bnotify,_id,responseObject);
     } else if (_method == "etrue_seedhash") {
         handle_dataset(_id,responseObject);
+        stratum_request_work();
     }else if (_method == "etrue_get_version") {
         handle_get_version(_id,responseObject);
     } else if (_method == "etrue_get_hashrate") {
@@ -812,6 +813,7 @@ bool EthStratumClient::handle_miner_work(bool bnotify,unsigned _id,Json::Value& 
         }
         // This will signal to dispatch the job
         // at the end of the transmission. 
+        cnote<<"stratum get new work....\n";
         return true;
     }
     return false;
@@ -877,7 +879,13 @@ bool EthStratumClient::make_and_update_ds(string const& seed_hash,uint8_t seeds[
     true_dataset ds(dataset_len);
     ds.make(seeds);
     _dsmgr.set_dataset(&ds);
-    return false;
+    if (seed_hash != ds.seed_hash) {
+        cwarn<<"make dataset error\n";
+        cwarn<<"make dataset,orgi_seed_hash:"<<seed_hash<<"\n";
+        cwarn<<"make dataset,seed_hash:"<<ds.seed_hash<<"\n";
+        return false;
+    }
+    return true;
 }
 void EthStratumClient::request_dataset(string const &seedhash) {
     Json::Value jReq;
