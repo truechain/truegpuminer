@@ -237,6 +237,7 @@ void CPUMiner::search(const dev::eth::WorkPackage& w)
     memcpy(head,w.header.data(),DGST_SIZE);
     memcpy(target,w.boundary.data(),DGST_SIZE);
 
+    cpulog<< "Job:"<<w.header.abridged()<<"StartNonce:"<<nonce<<EthReset;
     while (true)
     {
         if (m_new_work.load(std::memory_order_relaxed))  // new work arrived ?
