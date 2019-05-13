@@ -632,8 +632,8 @@ void EthStratumClient::processResponse(Json::Value& responseObject) {
 
     if (!_isSuccess) {
         cwarn << "Pool sent an invalid jsonrpc message...,method:"<<_method<<"error:"<<_errReason;
-        cwarn << "Disconnecting...";
-        m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));  // ????
+        // cwarn << "Disconnecting...";
+        // m_io_service.post(m_io_strand.wrap(boost::bind(&EthStratumClient::disconnect, this)));  // ????
         return;
     }
 
@@ -664,13 +664,13 @@ void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject,std
     if (!jResult.empty()) {
         if (jResult.isBool() && jResult.asBool()) {
             if (_id == 1) {
-                cwarn<<"login success...";
+                cnote<<"login success...";
                 startSession();
                 m_authpending.store(false, std::memory_order_relaxed);
                 m_session->authorized.store(true, std::memory_order_relaxed);
                 stratum_request_work();
             } else {
-                cwarn<<"submit success...";
+                cnote<<"submit success...";
                 m_authpending.store(false, std::memory_order_relaxed);
                 if (m_onSolutionAccepted)
                     m_onSolutionAccepted(response_delay_ms, 0, false);
@@ -740,7 +740,7 @@ bool EthStratumClient::handle_miner_work(bool bnotify,unsigned _id,Json::Value& 
         }
         // This will signal to dispatch the job
         // at the end of the transmission. 
-        cnote<<"stratum get new work....\n";
+        cnote<<"stratum get new work....";
         return true;
     }
     return false;
@@ -823,6 +823,7 @@ void EthStratumClient::request_dataset(string const &seedhash) {
     jReq["params"] = Json::Value(Json::arrayValue);
     jReq["params"].append(seedhash);
     send(jReq);  
+    cnote<<"stratum update dataset....";
     enqueue_response_plea();
 }
 
