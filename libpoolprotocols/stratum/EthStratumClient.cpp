@@ -261,10 +261,10 @@ void EthStratumClient::disconnect_finalize()
     m_disconnecting.store(false, std::memory_order_relaxed);
     m_txPending.store(false, std::memory_order_relaxed);
 
-    if (!m_conn->IsUnrecoverable())
-    {
-        m_conn->MarkUnrecoverable();
-    }
+    // if (!m_conn->IsUnrecoverable())
+    // {
+    //     m_conn->MarkUnrecoverable();
+    // }
 
     // Clear plea queue and stop timing
     clear_response_pleas();
