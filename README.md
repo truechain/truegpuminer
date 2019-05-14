@@ -119,3 +119,4 @@ Licensed under the [GNU General Public License, Version 3](LICENSE).
 
 
 [ethminer]: https://github.com/ethereum-mining/ethminer
+[Releases]: https://github.com/truechain/truegpuminer/releases
