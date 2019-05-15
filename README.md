@@ -53,12 +53,14 @@ where `scheme` can be either of:
 * `http` for getwork mode (getrue)
 * `stratum+tcp` for plain stratum mode
 
+Stratum protocol detail can be found in the [specification](https://github.com/truechain/trueminer/blob/master/protocol.md).
+
 For getwork mode(solo mining):
 
 ```
 trueminer -G -P http://hostname:port
 ```
-You need to sepecify *hostname* and *port* according to you getrue rpc address.
+You need to specify *hostname* and *port* according to you getrue rpc address.
 
 For stratum pool:
 
@@ -119,4 +121,4 @@ Licensed under the [GNU General Public License, Version 3](LICENSE).
 
 
 [ethminer]: https://github.com/ethereum-mining/ethminer
-[Releases]: https://github.com/truechain/truegpuminer/releases
+[Releases]: https://github.com/truechain/trueminer/releases
