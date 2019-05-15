@@ -760,12 +760,12 @@ public:
 
     void help()
     {
-        cout << "Ethminer - GPU ethash miner" << endl
-             << "minimal usage : ethminer [DEVICES_TYPE] [OPTIONS] -P... [-P...]" << endl
+        cout << "Trueminer - GPU TrueChain miner" << endl
+             << "minimal usage : trueminer [DEVICES_TYPE] [OPTIONS] -P... [-P...]" << endl
              << endl
              << "Devices type options :" << endl
              << endl
-             << "    By default ethminer will try to use all devices types" << endl
+             << "    By default trueminer will try to use all devices types" << endl
              << "    it can detect. Optionally you can limit this behavior" << endl
              << "    setting either of the following options" << endl
 #if ETH_ETHASHCL
