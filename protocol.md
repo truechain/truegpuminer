@@ -1,11 +1,16 @@
+# TrueChain stratum mining protocol
 
+## Introduction
 
-###     1.登录认证
+The TrueChain stratum protocol is to support pooled mining as a replacement of getwork protocol.
 
-矿机启动，首先以etrue_submitLogin方法向矿池连接登录。
+## Stratum methods:
 
+### submitLogin
 
-Client:
+Login happens after TCP connection established from miner to pool.
+
+Miner:
 
 ```
 {
@@ -20,7 +25,7 @@ Client:
 }
 ```
 
-Server:
+Pool:
 
 ```
 { "id": 1, "jsonrpc": "2.0", "result": true }
@@ -30,26 +35,24 @@ Exceptions:
 { "id": 1, "jsonrpc": "2.0", "result": null, "error": { code: -1, message: "Invalid login" } }
 ```
 
-其中：
+params: 
 
-用户奖励地址:0xb85150eb365e7df0941f0cf08235f987ba91506a；
+wallet:0xb85150eb365e7df0941f0cf08235f987ba91506a
 
-admin@example.net:用户邮箱,可选。
+email(optional):admin@example.net
 
+### getWork
 
+Miner request from pool for new mining job
 
-### 	2.任务请求
-
-矿机向矿池请求新挖矿任务，矿池分配新任务。
-
-Client:
+Miner:
 
 ```
 {id":2,"jsonrpc": "2.0","method":"etrue_getWork"}
 
 ```
 
-Server:
+Pool:
 
 ```
 { "id":2,
@@ -66,19 +69,19 @@ Exceptions:
 
 { "id": 2, "result": null, "error": { code: 0, message: "Work not ready" } }
 ```
-**headerhash**: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef。
 
-**seedhash**：0x5eed00000000000000000000000000005eed0000000000000000000000000000。
+params:
 
-**任务难度target**：0x123456eb365e7df0941f0cf08235f98b123456eb365e7df0941f0cf08235f98b；前32字符表示
-block难度，后32字符表示fruit难度。
+**headerhash**: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
 
+**seedhash**：0x5eed00000000000000000000000000005eed0000000000000000000000000000
 
+**target**：0x123456eb365e7df0941f0cf08235f98b123456eb365e7df0941f0cf08235f98b, the prefix 16 
+bytes defines block target, suffix 16 bytes defines fruit target.
 
-### 	3.任务分配
+### notify
 
-矿池定期发给矿机。挖矿参数更新则发送ID为0的result消息给所有的矿机。
-
+The pool informs it's miners to notify next jobs by sending:
 
 Server:
 
@@ -99,13 +102,13 @@ Server:
 
 **seedhash**：0x5eed00000000000000000000000000005eed0000000000000000000000000000。
 
-**任务难度target**：0x123456eb365e7df0941f0cf08235f98b123456eb365e7df0941f0cf08235f98b；前32字符表示
-block难度，后32字符表示fruit难度；
+**target**：0x123456eb365e7df0941f0cf08235f98b123456eb365e7df0941f0cf08235f98b, the prefix 16 
+bytes defines block target, suffix 16 bytes defines fruit target.
 
 
-### 	4.结果提交
+### submitwork
 
-矿机找到合法share时，就以”etrue_submitWork“方法向矿池提交任务。矿池返回true即结果被接受。
+The miner submit result to pool once mining share found. *true* is reethminerturned if the share is accepted.
 
 ```
 Request :
@@ -138,19 +141,18 @@ Pool MAY return exception on invalid share submission usually followed by tempor
 { "id": 3, "jsonrpc": "2.0", "result": null, "error": { code: -1, message: "Malformed PoW result" } }
 
 ```
-**minernonce**: 0x1060。minernonce为无符号64位的整数。
+
+**minernonce**: 0x1060
 
 **headerhash**: 0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef。
 
 **mixhash**: 0x2b20a6c641ed155b893ee750ef90ec3be5d24736d16838b84759385b6724220d。
 
+### dataset 
 
+The miner use seedhash to identify dataset changes. If seedhash of new work changed, the miner should 
 
-### 	5.申请种子哈希
-
-矿工使用seedhash识别DataSet，如果不匹配则向矿池申请种子哈希来生成DataSet。
-
-矿池应该马上发送种子哈希给矿机(10240个)。
+send request for dataset seedhash array.
 
 
 Client:
@@ -188,16 +190,14 @@ Server:
   "error": null
 ```
 
-**result**: 10240个用于构建DataSet的种子哈希
+**result**: 10240 seedash to generate new epoch dataset
 
-**seedhash**: 0x5eed00000000000000000000000000005eed0000000000000000000000000000用于验证构建后的DataSet
+**seedhash**: 0x5eed00000000000000000000000000005eed0000000000000000000000000000, seedhash is used
+to verify dataset.
 
+### get_version
 
-
-###     6.获取cpuminer版本
-
-矿池获取矿机cpuminer版本（暂无）。
-
+Pool send request to get miner's version
 
 Server:
 
@@ -208,7 +208,6 @@ Server:
 }
 ```
 
-
 Client:
 
 ```
@@ -217,10 +216,9 @@ Client:
   "error": null
 ```
 
-###     6.获取hashrate
+### gethashrate
 
-矿池获取矿机获取hashrate。
-
+Pool send request to get hashrate of it's miner
 
 Server:
 
@@ -231,7 +229,6 @@ Server:
 }
 ```
 
-
 Client:
 
 ```
@@ -240,4 +237,5 @@ Client:
   "result": "600",
   "error": null
 ```
+
 **result**: 600 hash/s,hex
