@@ -344,7 +344,7 @@ void CLMiner::workLoop()
                 continue;
             }
 
-            if (current.header != w.header)
+            if (current.header != w.header || current.boundary != w.boundary)
             {
                 cllog << "Fetch: " << w.header.abridged() << " seed: " << w.seed.abridged()
                     << " nonce: 0x" << toHex(w.startNonce);
