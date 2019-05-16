@@ -686,7 +686,7 @@ void EthStratumClient::handle_works(unsigned _id,Json::Value& responseObject,std
                  if (m_onSolutionRejected){
                     m_onSolutionRejected(response_delay_ms, 0);
                 }
-                stratum_request_work();
+                // stratum_request_work();
             }
         }
     }
