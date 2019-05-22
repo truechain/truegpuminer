@@ -18,7 +18,7 @@
 
 * [Install](#install)
 * [Usage](#usage)
-* [Build](#build)
+* [Build](#building-from-source)
 * [Contribute](#contribute)
 
 
