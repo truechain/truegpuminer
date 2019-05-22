@@ -24,8 +24,8 @@
 
 ## Install
 
-Standalone **executables** for *Linux* are provided in the [Releases]
-section. *Windows* and *macOS* version are under development.
+Standalone **executables** for *Linux* and *Windows* are provided in the [Releases]
+section.
 
 Download an archive for your operating system and unpack the content to a place
 accessible from command line. The trueminer is ready to go.
@@ -71,13 +71,18 @@ trueminer -G -P stratum+tcp://WALLET.WORKER@hostname:port
 
 ### Building from source
 
-On Ubuntu platform, install driver for nvidia GPU
+#### Requirements
 
+On **Ubuntu**, install driver for nvidia GPU
 
 ```
 add-apt-repository ppa:graphics-drivers/ppa
 apt-get install nvidia-418 nvidia-418-dev nvidia-opencl-dev nvidia-opencl-icd-418
 ```
+
+On **Windows**, install [Visual Studio 2017](https://www.visualstudio.com/downloads/)
+
+#### Instructions
 
 1. Make sure git submodules are up to date:
 
@@ -98,10 +103,22 @@ apt-get install nvidia-418 nvidia-418-dev nvidia-opencl-dev nvidia-opencl-icd-41
     cmake ..
     ```
 
+    **Note:** On *Windows*, sepecify target platform name(x64):
+
+    ```shell
+    cmake .. -G "Visual Studio 15 2017 Win64"
+    ```
+
 4. Build the project.
 
     ```shell
-    make
+    cmake --build .
+    ```
+
+    **Note:** On *Windows*, specify the build config for cmake:
+
+    ```shell
+    cmake --build . --config Release
     ```
 
 5. _(Optional)_ Install the built executable:
