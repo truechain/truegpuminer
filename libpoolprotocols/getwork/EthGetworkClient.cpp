@@ -464,7 +464,7 @@ void EthGetworkClient::processResponse(Json::Value& JRes)
                 {
                     if (m_current.seed != newWp.seed && newWp.seed != E0Seed)
                     {
-                        cwarn << "Request dataset " << newWp.seed.abridged() << " current " << m_current.seed.abridged() << " from "<< m_conn->Host() << ":"
+                        cnote << "Request dataset " << newWp.seed.abridged() << " current " << m_current.seed.abridged() << " from "<< m_conn->Host() << ":"
                             << toString(m_conn->Port());
 
                         Json::Value jGetDataset;
