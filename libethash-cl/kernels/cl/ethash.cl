@@ -227,34 +227,6 @@ void shake_out(sha3_ctx_t *c, void *out, size_t len)
     c->pt = j;
 }
 
-int xor64(uint64_t val, __constant uint8_t *cache) {
-    int r  = 0;
-
-    r ^= cache[val & 0xffff];
-    val >>= 16;
-    r ^= cache[val & 0xffff];
-    val >>= 16;
-    r ^= cache[val & 0xffff];
-    val >>= 16;
-    r ^= cache[val & 0xffff];
-
-    return r;
-}
-
-
-int muliple(uint64_t input[32], __global uint64_t *prow, __constant uint8_t *cache)
-{
-    int r = 0;
-    for (int k = 0; k < 32; k++)
-    {
-        if (input[k] != 0 && prow[k] != 0)
-                r ^= xor64(input[k] & prow[k], cache);
-    }
-
-    return r;
-}
-
-
 int MatMuliple(uint64_t input[32], uint64_t output[32], __global uint64_t *pmat, __constant uint8_t *cache)
 {
     __global uint64_t *prow = pmat;
@@ -263,8 +235,22 @@ int MatMuliple(uint64_t input[32], uint64_t output[32], __global uint64_t *pmat,
     {
         int k_i = k / 64;
         int k_r = k % 64;
-        unsigned int temp;
-        temp = muliple(input, prow, cache);
+        unsigned int temp = 0;
+
+#pragma unroll
+        for (int i = 0; i < 32; ++i)
+        {
+            if (prow[i] > 0 && input[i] > 0) {
+                uint64_t val = input[i] & prow[i];
+                temp ^= cache[(uint)val & 0xffff];
+                val >>= 16;
+                temp ^= cache[(uint)val & 0xffff];
+                val >>= 16;
+                temp ^= cache[(uint)val & 0xffff];
+                val >>= 16;
+                temp ^= cache[(uint)val & 0xffff];
+            }
+        }
 
         output[k_i] |= ((uint64_t)temp << k_r);
         prow += 32;
